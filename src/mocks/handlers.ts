@@ -16,8 +16,13 @@ export const handlers = [
   http.get(
     'https://api.npmjs.org/downloads/point/last-month/:package',
     ({ params }) => {
-      const pkg = decodeURIComponent(params.package as string)
-      const downloads = MOCK_DOWNLOADS[pkg] ?? 100
+      const pkg = decodeURIComponent(String(params.package))
+      const downloads = Object.prototype.hasOwnProperty.call(
+        MOCK_DOWNLOADS,
+        pkg
+      )
+        ? MOCK_DOWNLOADS[pkg]
+        : 100
       return HttpResponse.json({
         downloads,
         package: pkg,
