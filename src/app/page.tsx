@@ -13,6 +13,16 @@ interface Pkg {
   group: 'core' | 'installer' | 'platform'
 }
 
+interface NpmSearchResult {
+  objects: Array<{
+    package: {
+      name: string
+      version: string
+      description: string
+    }
+  }>
+}
+
 const FALLBACK: Pkg[] = [
   {
     name: 'centy',
@@ -73,10 +83,46 @@ const FALLBACK: Pkg[] = [
   },
 ]
 
-async function fetchStats(): Promise<Map<string, number>> {
+function isCentyPackage(name: string): boolean {
+  const unscoped = name.includes('/') ? name.split('/')[1] : name
+  return unscoped === 'centy' || unscoped.startsWith('centy-')
+}
+
+function inferGroup(name: string): Pkg['group'] {
+  const unscoped = name.includes('/') ? name.split('/')[1] : name
+  if (unscoped === 'centy-installer') return 'installer'
+  if (unscoped.startsWith('centy-installer-')) return 'platform'
+  return 'core'
+}
+
+async function fetchPackages(): Promise<Pkg[]> {
+  try {
+    const res = await fetch(
+      'https://registry.npmjs.org/-/v1/search?text=centy&size=50',
+      { next: { revalidate: 3600 } }
+    )
+    if (!res.ok) return FALLBACK
+    const data = (await res.json()) as NpmSearchResult
+    const packages: Pkg[] = data.objects
+      .map(o => o.package)
+      .filter(pkg => isCentyPackage(pkg.name))
+      .map(pkg => ({
+        name: pkg.name,
+        version: pkg.version,
+        description: pkg.description,
+        downloads: null,
+        group: inferGroup(pkg.name),
+      }))
+    return packages.length > 0 ? packages : FALLBACK
+  } catch {
+    return FALLBACK
+  }
+}
+
+async function fetchStats(packages: Pkg[]): Promise<Map<string, number>> {
   const map = new Map<string, number>()
   await Promise.allSettled(
-    FALLBACK.map(async pkg => {
+    packages.map(async pkg => {
       try {
         const res = await fetch(
           `https://api.npmjs.org/downloads/point/last-month/${encodeURIComponent(pkg.name)}`,
@@ -221,9 +267,10 @@ function PkgRow({ pkg, delay }: { pkg: Pkg; delay: number }) {
 }
 
 export default async function Home() {
-  const stats = await fetchStats()
+  const discovered = await fetchPackages()
+  const stats = await fetchStats(discovered)
 
-  const packages: Pkg[] = FALLBACK.map(pkg => {
+  const packages: Pkg[] = discovered.map(pkg => {
     const statsDownloads = stats.get(pkg.name)
     return {
       ...pkg,
