@@ -7,6 +7,7 @@ function PkgRowSkeleton() {
         <div className="skeleton skeleton-pkg-desc" />
       </div>
       <div className="skeleton skeleton-ver-md" />
+      <div className="skeleton pkg-sparkline" />
       <div className="skeleton skeleton-ver-lg" />
       <div className="skeleton skeleton-dl" />
     </div>

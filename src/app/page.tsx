@@ -27,6 +27,10 @@ interface NpmSearchResult {
   }>
 }
 
+interface NpmRangeResult {
+  downloads: Array<{ day: string; downloads: number }>
+}
+
 function isCentyPackage(name: string): boolean {
   return name.startsWith('centy-')
 }
@@ -101,6 +105,39 @@ const fetchSizes = cache(
   }
 )
 
+const fetchSparklines = cache(
+  async (packages: Pkg[]): Promise<Map<string, number[]>> => {
+    const map = new Map<string, number[]>()
+    await Promise.allSettled(
+      packages.map(async pkg => {
+        try {
+          const res = await fetch(
+            `https://api.npmjs.org/downloads/range/last-year/${encodeURIComponent(pkg.name)}`,
+            { cache: 'force-cache' }
+          )
+          if (!res.ok) return
+          const data: NpmRangeResult = await res.json()
+          const monthly = new Map<string, number>()
+          for (const { day, downloads } of data.downloads) {
+            const month = day.slice(0, 7)
+            const prev = monthly.get(month)
+            monthly.set(month, (prev !== undefined ? prev : 0) + downloads)
+          }
+          const sorted = Array.from(monthly.keys()).sort()
+          const points = sorted.slice(-12).map(m => {
+            const v = monthly.get(m)
+            return v !== undefined ? v : 0
+          })
+          if (points.length >= 2) map.set(pkg.name, points)
+        } catch {
+          // ignore
+        }
+      })
+    )
+    return map
+  }
+)
+
 function fmtBytes(n: number | null): string {
   if (n === null) return '—'
   if (n < 1000) return `${n} B`
@@ -115,6 +152,44 @@ function fmt(n: number | null): string {
 
 function npmUrl(name: string): string {
   return `https://www.npmjs.com/package/${encodeURIComponent(name)}`
+}
+
+function Sparkline({ data }: { data: number[] }) {
+  const W = 56
+  const H = 20
+  const min = Math.min(...data)
+  const max = Math.max(...data)
+  const range = max - min || 1
+  const points = data
+    .map((v, i) => {
+      const x = ((i / (data.length - 1)) * W).toFixed(1)
+      const y = (H - ((v - min) / range) * (H - 4) - 2).toFixed(1)
+      return `${x},${y}`
+    })
+    .join(' ')
+  const mid = Math.floor(data.length / 2)
+  const avg = (arr: number[]) => arr.reduce((a, b) => a + b, 0) / arr.length
+  const overall = avg(data)
+  const threshold = overall * 0.05
+  const trend = avg(data.slice(mid)) - avg(data.slice(0, mid))
+  const stroke =
+    trend > threshold
+      ? 'var(--c-green)'
+      : trend < -threshold
+        ? '#e05c5c'
+        : 'var(--c-muted)'
+  return (
+    <svg width={W} height={H} aria-hidden="true" className="pkg-sparkline">
+      <polyline
+        points={points}
+        fill="none"
+        stroke={stroke}
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
 }
 
 // ── Async data components ────────────────────────────────────────────────────
@@ -140,7 +215,15 @@ async function HeaderStats() {
   )
 }
 
-function PkgRow({ pkg, delay }: { pkg: Pkg; delay: number }) {
+function PkgRow({
+  pkg,
+  delay,
+  sparkline,
+}: {
+  pkg: Pkg
+  delay: number
+  sparkline: number[] | undefined
+}) {
   return (
     <div
       className="pkg-row animate-in"
@@ -164,6 +247,13 @@ function PkgRow({ pkg, delay }: { pkg: Pkg; delay: number }) {
 
       {/* version */}
       <span className="pkg-version">v{pkg.version}</span>
+
+      {/* sparkline */}
+      {sparkline !== undefined && sparkline.length >= 2 ? (
+        <Sparkline data={sparkline} />
+      ) : (
+        <span aria-hidden="true" className="pkg-sparkline" />
+      )}
 
       {/* downloads */}
       <span className="pkg-downloads">
@@ -196,9 +286,10 @@ function PkgRow({ pkg, delay }: { pkg: Pkg; delay: number }) {
 
 async function PackageList() {
   const discovered = await fetchPackages()
-  const [stats, sizes] = await Promise.all([
+  const [stats, sizes, sparklines] = await Promise.all([
     fetchStats(discovered),
     fetchSizes(discovered),
+    fetchSparklines(discovered),
   ])
 
   const packages: Pkg[] = discovered.map(pkg => {
@@ -215,7 +306,12 @@ async function PackageList() {
     <>
       <div className="animate-in pkg-list">
         {packages.map((pkg, i) => (
-          <PkgRow key={pkg.name} pkg={pkg} delay={100 + i * 40} />
+          <PkgRow
+            key={pkg.name}
+            pkg={pkg}
+            delay={100 + i * 40}
+            sparkline={sparklines.get(pkg.name)}
+          />
         ))}
       </div>
 
