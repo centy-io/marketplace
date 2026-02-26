@@ -1,6 +1,8 @@
 import { Suspense, cache } from 'react'
 import type { Metadata } from 'next'
 import { HeaderStatsSkeleton, SectionSkeleton } from './skeletons'
+import CopyButton from './CopyButton'
+import PackageManagerToggle from './PackageManagerToggle'
 
 export const metadata: Metadata = {
   title: 'Centy · npm Packages',
@@ -214,6 +216,9 @@ function PkgRow({ pkg, delay }: { pkg: Pkg; delay: number }) {
       >
         npm ↗
       </a>
+
+      {/* copy install command */}
+      <CopyButton pkgName={pkg.name} />
     </div>
   )
 }
@@ -354,6 +359,7 @@ export default function Home() {
 
       {/* Package list */}
       <div className="main-content">
+        <PackageManagerToggle />
         <Suspense fallback={<SectionSkeleton rowCount={9} />}>
           <PackageList />
         </Suspense>
