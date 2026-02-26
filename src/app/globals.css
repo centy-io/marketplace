@@ -58,6 +58,17 @@ body {
   }
 }
 
+@keyframes countIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @keyframes shimmer {
   0% {
     background-position: -200% 0;
@@ -80,12 +91,57 @@ body {
 }
 
 .animate-in {
-  animation: fadeSlideIn 0.4s ease forwards;
+  animation: fadeSlideIn 0.4s ease both;
+}
+
+.pkg-sparkline {
+  display: block;
+  width: 56px;
+  height: 20px;
+  align-self: center;
+  flex-shrink: 0;
+}
+
+.count-anim {
+  animation: countIn 0.2s ease-out;
+}
+
+.period-toggle {
+  display: flex;
+  gap: 2px;
+  background: var(--c-bg2);
+  padding: 2px;
+  border-radius: 4px;
+  border: 1px solid var(--c-border);
+}
+
+.period-btn {
+  background: transparent;
+  border: none;
+  color: var(--c-muted);
+  padding: 3px 8px;
+  border-radius: 3px;
+  font-size: 0.68rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    background 0.1s,
+    color 0.1s;
+  letter-spacing: 0.08em;
+}
+
+.period-btn:hover {
+  color: var(--c-text);
+}
+
+.period-btn.active {
+  background: var(--c-bg4);
+  color: var(--c-accent);
 }
 
 .pkg-row {
   display: grid;
-  grid-template-columns: 8px 1fr auto auto auto;
+  grid-template-columns: 8px 1fr auto auto auto auto auto auto;
   gap: 0 1.5rem;
   align-items: baseline;
   padding: 0.85rem 1rem;
@@ -113,6 +169,7 @@ body {
     color 0.15s ease,
     opacity 0.15s ease;
   font-weight: 500;
+  font-size: 0.85rem;
 }
 
 .pkg-link:hover {
@@ -127,6 +184,7 @@ body {
   font-size: 0.7rem;
   letter-spacing: 0.15em;
   color: var(--c-muted);
+  animation-delay: 80ms;
 }
 
 .section-header .name {
@@ -182,10 +240,91 @@ body {
   letter-spacing: 0.05em;
   white-space: nowrap;
   transition: color 0.15s ease;
+  padding-top: 0.15rem;
 }
 
 .npm-link:hover {
   color: var(--c-accent);
+}
+
+.copy-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--c-muted);
+  padding: 0.2rem;
+  border-radius: 3px;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.15s ease,
+    color 0.15s ease,
+    background 0.15s ease;
+  align-self: center;
+}
+
+.pkg-row:hover .copy-btn {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.copy-btn:hover {
+  color: var(--c-accent);
+  background: var(--c-bg3);
+}
+
+.copy-btn-success {
+  color: var(--c-green);
+}
+
+.pm-toggle-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 1.75rem;
+  margin-bottom: 0.4rem;
+}
+
+.pm-toggle-label {
+  font-size: 0.6rem;
+  color: var(--c-muted);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.pm-toggle {
+  display: flex;
+  gap: 0.2rem;
+}
+
+.pm-btn {
+  background: none;
+  border: 1px solid var(--c-border2);
+  color: var(--c-muted);
+  padding: 0.15rem 0.4rem;
+  border-radius: 2px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.65rem;
+  letter-spacing: 0.05em;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.pm-btn:hover {
+  color: var(--c-text);
+  border-color: var(--c-muted2);
+}
+
+.pm-btn-active {
+  color: var(--c-accent);
+  border-color: var(--c-accent);
+  background: color-mix(in srgb, var(--c-accent) 10%, transparent);
 }
 
 /* --- Responsive layout --- */
@@ -233,15 +372,542 @@ body {
   }
 
   .pkg-row {
-    grid-template-columns: 8px 1fr auto;
+    grid-template-columns: 8px 1fr auto auto;
     gap: 0 0.75rem;
+  }
+
+  .pkg-sparkline {
+    width: 48px;
+    height: 16px;
   }
 
   .pkg-version {
     display: none;
   }
 
+  .pkg-date {
+    display: none;
+  }
+
+  .pkg-size {
+    display: none;
+  }
+
   .pkg-row .npm-link {
     display: none;
   }
+
+  .copy-btn {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+/* ── Dot indicators ─────────────────────────────────────────────────────────── */
+
+.pkg-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--c-accent);
+  opacity: 0.7;
+  align-self: center;
+  flex-shrink: 0;
+}
+
+.pkg-dot-skeleton {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--c-bg3);
+  align-self: center;
+  flex-shrink: 0;
+}
+
+/* ── Package row columns ────────────────────────────────────────────────────── */
+
+.pkg-name-col {
+  min-width: 0;
+}
+
+.pkg-desc {
+  color: var(--c-muted);
+  font-size: 0.7rem;
+  margin-top: 0.2rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pkg-version {
+  color: var(--c-muted);
+  font-size: 0.72rem;
+  white-space: nowrap;
+  padding-top: 0.15rem;
+}
+
+.pkg-date {
+  color: var(--c-muted);
+  font-size: 0.72rem;
+  white-space: nowrap;
+  padding-top: 0.15rem;
+}
+
+.pkg-downloads {
+  color: var(--c-text);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  padding-top: 0.15rem;
+  text-align: right;
+  min-width: 6rem;
+}
+
+.pkg-dl-arrow {
+  color: var(--c-muted);
+  margin-right: 0.3rem;
+}
+
+.pkg-dl-count {
+  font-weight: 500;
+}
+
+.pkg-dl-unit {
+  color: var(--c-muted);
+  font-size: 0.65rem;
+}
+
+.pkg-size {
+  color: var(--c-text);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  padding-top: 0.15rem;
+  text-align: right;
+  min-width: 4.5rem;
+}
+
+.pkg-size-icon {
+  color: var(--c-muted);
+  margin-right: 0.3rem;
+}
+
+.pkg-size-val {
+  font-weight: 500;
+}
+
+/* ── Package list containers ────────────────────────────────────────────────── */
+
+.pkg-list {
+  border: 1px solid var(--c-border);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 2rem;
+  animation-delay: 100ms;
+}
+
+.pkg-badge-note {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 2rem;
+  font-size: 0.65rem;
+  color: var(--c-muted);
+  animation-delay: 300ms;
+}
+
+.pkg-badge-note-text {
+  color: inherit;
+}
+
+.header-title {
+  /* Title block — layout handled by parent flex */
+}
+
+.section-loading {
+  /* Skeleton section wrapper — layout handled by children */
+}
+
+/* ── Header stats ───────────────────────────────────────────────────────────── */
+
+.header-stats-label {
+  font-size: 0.6rem;
+  color: var(--c-muted);
+  letter-spacing: 0.15em;
+  margin-bottom: 0.35rem;
+}
+
+.header-stats-total {
+  font-size: 2rem;
+  font-weight: 600;
+  color: var(--c-accent);
+  line-height: 1;
+}
+
+.header-stats-count {
+  font-size: 0.65rem;
+  color: var(--c-muted);
+  margin-top: 0.4rem;
+}
+
+/* ── Skeleton sizes ─────────────────────────────────────────────────────────── */
+
+.skeleton-name-col {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.skeleton-section-list {
+  border: 1px solid var(--c-border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.skeleton-pkg-name {
+  height: 0.75rem;
+  width: 55%;
+}
+.skeleton-pkg-desc {
+  height: 0.6rem;
+  width: 75%;
+}
+.skeleton-ver-md {
+  height: 0.7rem;
+  width: 3.5rem;
+}
+.skeleton-date {
+  height: 0.7rem;
+  width: 4.5rem;
+}
+.skeleton-ver-lg {
+  height: 0.7rem;
+  width: 5rem;
+}
+.skeleton-dl {
+  height: 0.65rem;
+  width: 2.5rem;
+}
+.skeleton-label-sm {
+  height: 0.7rem;
+  width: 4rem;
+}
+.skeleton-label-lg {
+  height: 0.7rem;
+  width: 7rem;
+}
+.skeleton-total {
+  height: 2rem;
+  width: 7rem;
+  margin-left: auto;
+}
+.skeleton-total-count {
+  height: 0.65rem;
+  width: 9rem;
+  margin-top: 0.4rem;
+  margin-left: auto;
+}
+
+/* ── Page structure ─────────────────────────────────────────────────────────── */
+
+.page-main {
+  min-height: 100vh;
+  background: var(--c-bg);
+  color: var(--c-text);
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.top-accent-line {
+  height: 2px;
+  background: linear-gradient(90deg, var(--c-accent) 0%, transparent 100%);
+}
+
+.header-inner {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.header-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.header-logo {
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: var(--c-accent);
+  letter-spacing: 0.12em;
+}
+
+.header-subtitle {
+  font-size: 0.8rem;
+  color: var(--c-muted);
+  letter-spacing: 0.25em;
+  font-weight: 300;
+}
+
+.header-tagline {
+  color: var(--c-muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+}
+
+.page-footer {
+  border-top: 1px solid var(--c-border);
+  padding: 1.25rem 2rem;
+  text-align: center;
+}
+
+.footer-text {
+  color: var(--c-muted);
+  font-size: 0.65rem;
+  letter-spacing: 0.05em;
+}
+
+.footer-link {
+  color: var(--c-accent);
+  text-decoration: none;
+}
+
+/* ── Dot indicators ─────────────────────────────────────────────────────────── */
+
+.pkg-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--c-accent);
+  opacity: 0.7;
+  align-self: center;
+  flex-shrink: 0;
+}
+
+.pkg-dot-skeleton {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--c-bg3);
+  align-self: center;
+  flex-shrink: 0;
+}
+
+/* ── Package row columns ────────────────────────────────────────────────────── */
+
+.pkg-name-col {
+  min-width: 0;
+}
+
+.pkg-desc {
+  color: var(--c-muted);
+  font-size: 0.7rem;
+  margin-top: 0.2rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pkg-version {
+  color: var(--c-muted);
+  font-size: 0.72rem;
+  white-space: nowrap;
+  padding-top: 0.15rem;
+}
+
+.pkg-downloads {
+  color: var(--c-text);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  padding-top: 0.15rem;
+  text-align: right;
+  min-width: 6rem;
+}
+
+.pkg-dl-arrow {
+  color: var(--c-muted);
+  margin-right: 0.3rem;
+}
+
+.pkg-dl-count {
+  font-weight: 500;
+}
+
+.pkg-dl-unit {
+  color: var(--c-muted);
+  font-size: 0.65rem;
+}
+
+/* ── Package list containers ────────────────────────────────────────────────── */
+
+.pkg-list {
+  border: 1px solid var(--c-border);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 2rem;
+  animation-delay: 100ms;
+}
+
+.pkg-badge-note {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 2rem;
+  font-size: 0.65rem;
+  color: var(--c-muted);
+  animation-delay: 300ms;
+}
+
+.pkg-badge-note-text {
+  color: inherit;
+}
+
+.header-title {
+  /* Title block — layout handled by parent flex */
+}
+
+.section-loading {
+  /* Skeleton section wrapper — layout handled by children */
+}
+
+/* ── Header stats ───────────────────────────────────────────────────────────── */
+
+.header-stats-label {
+  font-size: 0.6rem;
+  color: var(--c-muted);
+  letter-spacing: 0.15em;
+  margin-bottom: 0.35rem;
+}
+
+.header-stats-total {
+  font-size: 2rem;
+  font-weight: 600;
+  color: var(--c-accent);
+  line-height: 1;
+}
+
+.header-stats-count {
+  font-size: 0.65rem;
+  color: var(--c-muted);
+  margin-top: 0.4rem;
+}
+
+/* ── Skeleton sizes ─────────────────────────────────────────────────────────── */
+
+.skeleton-name-col {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.skeleton-section-list {
+  border: 1px solid var(--c-border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.skeleton-pkg-name {
+  height: 0.75rem;
+  width: 55%;
+}
+.skeleton-pkg-desc {
+  height: 0.6rem;
+  width: 75%;
+}
+.skeleton-ver-md {
+  height: 0.7rem;
+  width: 3.5rem;
+}
+.skeleton-ver-lg {
+  height: 0.7rem;
+  width: 5rem;
+}
+.skeleton-dl {
+  height: 0.65rem;
+  width: 2.5rem;
+}
+.skeleton-label-sm {
+  height: 0.7rem;
+  width: 4rem;
+}
+.skeleton-label-lg {
+  height: 0.7rem;
+  width: 7rem;
+}
+.skeleton-total {
+  height: 2rem;
+  width: 7rem;
+  margin-left: auto;
+}
+.skeleton-total-count {
+  height: 0.65rem;
+  width: 9rem;
+  margin-top: 0.4rem;
+  margin-left: auto;
+}
+
+/* ── Page structure ─────────────────────────────────────────────────────────── */
+
+.page-main {
+  min-height: 100vh;
+  background: var(--c-bg);
+  color: var(--c-text);
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.top-accent-line {
+  height: 2px;
+  background: linear-gradient(90deg, var(--c-accent) 0%, transparent 100%);
+}
+
+.header-inner {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.header-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.header-logo {
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: var(--c-accent);
+  letter-spacing: 0.12em;
+}
+
+.header-subtitle {
+  font-size: 0.8rem;
+  color: var(--c-muted);
+  letter-spacing: 0.25em;
+  font-weight: 300;
+}
+
+.header-tagline {
+  color: var(--c-muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+}
+
+.page-footer {
+  border-top: 1px solid var(--c-border);
+  padding: 1.25rem 2rem;
+  text-align: center;
+}
+
+.footer-text {
+  color: var(--c-muted);
+  font-size: 0.65rem;
+  letter-spacing: 0.05em;
+}
+
+.footer-link {
+  color: var(--c-accent);
+  text-decoration: none;
 }

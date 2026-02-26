@@ -1,9 +1,9 @@
 ---
 displayNumber: 9
-status: open
+status: in-progress
 priority: 2
 createdAt: 2026-02-26T04:00:00.000000+00:00
-updatedAt: 2026-02-26T04:00:00.000000+00:00
+updatedAt: 2026-02-26T01:59:22.871526+00:00
 ---
 
 # feat: display unpacked package size
