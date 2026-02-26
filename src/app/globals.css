@@ -1,5 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&display=swap');
-@import "tailwindcss";
+@import 'tailwindcss';
 
 :root {
   --c-bg: #0b0b0e;
@@ -16,13 +16,16 @@
   --c-green: #4db87a;
 }
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
-html, body {
+html,
+body {
   background-color: var(--c-bg);
   color: var(--c-text);
   font-family: 'IBM Plex Mono', 'Courier New', monospace;
@@ -36,13 +39,23 @@ html, body {
 }
 
 @keyframes fadeSlideIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes scanline {
-  0%   { transform: translateY(-100%); }
-  100% { transform: translateY(100vh); }
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100vh);
+  }
 }
 
 .animate-in {
@@ -57,7 +70,9 @@ html, body {
   padding: 0.85rem 1rem;
   border-left: 2px solid transparent;
   border-bottom: 1px solid var(--c-border);
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
   cursor: default;
 }
 
@@ -73,7 +88,9 @@ html, body {
 .pkg-link {
   color: var(--c-accent);
   text-decoration: none;
-  transition: color 0.15s ease, opacity 0.15s ease;
+  transition:
+    color 0.15s ease,
+    opacity 0.15s ease;
   font-weight: 500;
 }
 
