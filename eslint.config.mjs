@@ -32,7 +32,6 @@ export default [
       'default/no-hardcoded-urls': 'off',
       // Next.js pages are legitimately larger than generic 100/70-line limits.
       'max-lines': ['warn', { max: 600, skipBlankLines: true, skipComments: true }],
-      'max-lines-per-function': ['warn', { max: 300, skipBlankLines: true, skipComments: true }],
     },
   },
   {
