@@ -11,8 +11,8 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,css,md}\"",
-    "spell": "cspell lint '**/*.{ts,tsx,js,md,json}' --gitignore",
-    "spell:check": "cspell lint '**/*.{ts,tsx,js,md,json}' --gitignore",
+    "spell": "cspell lint '**/*.{ts,tsx,js,md,json}' --gitignore --config .centy/cspell.json",
+    "spell:check": "cspell lint '**/*.{ts,tsx,js,md,json}' --gitignore --config .centy/cspell.json",
     "knip": "knip",
     "prepare": "husky"
   },
