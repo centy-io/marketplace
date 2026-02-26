@@ -56,4 +56,13 @@ export const handlers = [
       })
     }
   ),
+  http.get('https://registry.npmjs.org/:package', ({ params }) => {
+    const pkg = decodeURIComponent(String(params.package))
+    return HttpResponse.json({
+      name: pkg,
+      time: {
+        modified: '2026-02-01T00:00:00.000Z',
+      },
+    })
+  }),
 ]
