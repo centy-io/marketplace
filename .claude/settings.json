@@ -4,7 +4,8 @@
       "Bash(gh repo:*)",
       "Bash(npx centy:*)",
       "Bash(centy:*)",
-      "Bash(git:*)"
+      "Bash(git:*)",
+      "Bash(uuidgen:*)"
     ],
     "deny": ["Bash(npm install)", "Bash(gh issue create:*)"]
   }

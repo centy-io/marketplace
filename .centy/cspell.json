@@ -11,9 +11,8 @@
     "stateColors",
     "priorityColors",
     "centyVersion",
-    "schemaVersion"
+    "schemaVersion",
+    "uuidgen"
   ],
-  "ignorePaths": [
-    ".centy-manifest.json"
-  ]
+  "ignorePaths": [".centy-manifest.json", ".claude/**"]
 }
