@@ -16,12 +16,14 @@
     "spell:check": "cspell lint '**/*.{ts,tsx,js,md,json}' --gitignore",
     "knip": "knip",
     "test:screenshots": "playwright test",
+    "analyze": "ANALYZE=true next build --webpack",
     "test:screenshots:update": "playwright test --update-snapshots",
     "prepare": "husky"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.4.2",
     "@commitlint/config-conventional": "^20.4.2",
+    "@next/bundle-analyzer": "^16.1.6",
     "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4.2.1",
     "@types/node": "^25.3.0",

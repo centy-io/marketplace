@@ -2,7 +2,14 @@
   "version": "0.2",
   "language": "en",
   "import": [".centy/cspell.json"],
-  "words": ["networkidle", "mswjs", "chromium", "allsettled", "Playwright"],
+  "words": [
+    "networkidle",
+    "mswjs",
+    "chromium",
+    "allsettled",
+    "Playwright",
+    "Turbopack"
+  ],
   "ignorePaths": [
     "node_modules",
     ".next",

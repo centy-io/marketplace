@@ -38,8 +38,8 @@ export default [
     },
   },
   {
-    // Next.js instrumentation file: process.env access is framework-required here.
-    files: ['src/instrumentation.ts'],
+    // Next.js config and instrumentation files: process.env access is framework-required here.
+    files: ['next.config.ts', 'src/instrumentation.ts'],
     rules: {
       'ddd/require-spec-file': 'off',
       'no-restricted-syntax': 'off',
