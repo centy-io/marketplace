@@ -1,4 +1,14 @@
+import { Suspense, cache } from 'react'
 import type { Metadata } from 'next'
+import { HeaderStatsSkeleton, SectionSkeleton } from './skeletons'
+import CopyButton from './CopyButton'
+import PackageManagerToggle from './PackageManagerToggle'
+import { PeriodProvider, type Period } from './period-context'
+import {
+  PeriodToggle,
+  DownloadsCell,
+  HeaderTotalsDisplay,
+} from './period-toggle'
 
 export const metadata: Metadata = {
   title: 'Centy · npm Packages',
@@ -9,208 +19,347 @@ interface Pkg {
   name: string
   version: string
   description: string
-  downloads: number | null
-  group: 'core' | 'installer' | 'platform' | 'assets'
+  downloads: Record<Period, number | null>
+  unpackedSize: number | null
+  publishedAt: string | null
 }
 
-const FALLBACK: Pkg[] = [
-  {
-    name: 'centy',
-    version: '0.7.8',
-    description:
-      'CLI for managing project issues and docs via code in the .centy folder',
-    downloads: 2049,
-    group: 'core',
-  },
-  {
-    name: 'centy-plugin-persona',
-    version: '0.1.4',
-    description: 'Persona CLI by Centy',
-    downloads: null,
-    group: 'core',
-  },
-  {
-    name: '@centy-io/centy-installer',
-    version: '0.1.1',
-    description: 'Multi-ecosystem installer for the centy-daemon binary',
-    downloads: 222,
-    group: 'installer',
-  },
-  {
-    name: '@centy-io/centy-installer-darwin-arm64',
-    version: '0.1.1',
-    description: 'macOS ARM64',
-    downloads: 198,
-    group: 'platform',
-  },
-  {
-    name: '@centy-io/centy-installer-darwin-x64',
-    version: '0.1.1',
-    description: 'macOS x64',
-    downloads: 201,
-    group: 'platform',
-  },
-  {
-    name: '@centy-io/centy-installer-linux-x64',
-    version: '0.1.1',
-    description: 'Linux x64',
-    downloads: 227,
-    group: 'platform',
-  },
-  {
-    name: '@centy-io/centy-installer-linux-arm64',
-    version: '0.1.1',
-    description: 'Linux ARM64',
-    downloads: 199,
-    group: 'platform',
-  },
-  {
-    name: '@centy-io/centy-installer-win32-x64',
-    version: '0.1.1',
-    description: 'Windows x64',
-    downloads: 212,
-    group: 'platform',
-  },
-  {
-    name: '@centy-io/assets',
-    version: '0.0.1',
-    description: 'Centy brand assets — logos, icons, and design resources',
-    downloads: 558,
-    group: 'assets',
-  },
-]
+interface NpmSearchResult {
+  objects: Array<{
+    package: {
+      name: string
+      version: string
+      description: string
+    }
+  }>
+}
 
-async function fetchStats(): Promise<Map<string, number>> {
-  const map = new Map<string, number>()
-  await Promise.allSettled(
-    FALLBACK.map(async pkg => {
-      try {
-        const res = await fetch(
-          `https://api.npmjs.org/downloads/point/last-month/${encodeURIComponent(pkg.name)}`,
-          { cache: 'force-cache' }
-        )
-        if (!res.ok) return
-        const data = (await res.json()) as { downloads?: number }
-        if (typeof data.downloads === 'number') {
-          map.set(pkg.name, data.downloads)
-        }
-      } catch {
-        // fall back to hardcoded value
-      }
-    })
+interface NpmRangeResult {
+  downloads: Array<{ day: string; downloads: number }>
+}
+
+interface NpmRegistryTime {
+  modified?: string
+}
+
+interface NpmRegistryResponse {
+  time?: NpmRegistryTime
+}
+
+function isCentyPackage(name: string): boolean {
+  return name.startsWith('centy-')
+}
+
+function getToday(): string {
+  return new Date().toISOString().split('T')[0]
+}
+
+const fetchPackages = cache(async (): Promise<Pkg[]> => {
+  const res = await fetch(
+    'https://registry.npmjs.org/-/v1/search?text=centy-&size=50',
+    { next: { revalidate: 3600 } }
   )
-  return map
+  if (!res.ok) return []
+  const data: NpmSearchResult = await res.json()
+  return data.objects
+    .map(o => o.package)
+    .filter(pkg => isCentyPackage(pkg.name))
+    .map(pkg => ({
+      name: pkg.name,
+      version: pkg.version,
+      description: pkg.description,
+      downloads: { 'last-week': null, 'last-month': null, 'all-time': null },
+      unpackedSize: null,
+      publishedAt: null,
+    }))
+})
+
+const fetchStats = cache(
+  async (
+    packages: Pkg[]
+  ): Promise<Map<string, Record<Period, number | null>>> => {
+    const map = new Map<string, Record<Period, number | null>>()
+    await Promise.allSettled(
+      packages.map(async pkg => {
+        const encoded = encodeURIComponent(pkg.name)
+        const opts = { next: { revalidate: 3600 } }
+        const [weekRes, monthRes, allRes] = await Promise.allSettled([
+          fetch(
+            `https://api.npmjs.org/downloads/point/last-week/${encoded}`,
+            opts
+          ),
+          fetch(
+            `https://api.npmjs.org/downloads/point/last-month/${encoded}`,
+            opts
+          ),
+          fetch(
+            `https://api.npmjs.org/downloads/range/2000-01-01:${getToday()}/${encoded}`,
+            opts
+          ),
+        ])
+
+        let week: number | null = null
+        if (weekRes.status === 'fulfilled' && weekRes.value.ok) {
+          const weekData: { downloads?: number } = await weekRes.value.json()
+          week =
+            typeof weekData.downloads === 'number' ? weekData.downloads : null
+        }
+
+        let month: number | null = null
+        if (monthRes.status === 'fulfilled' && monthRes.value.ok) {
+          const monthData: { downloads?: number } = await monthRes.value.json()
+          month =
+            typeof monthData.downloads === 'number' ? monthData.downloads : null
+        }
+
+        let allTime: number | null = null
+        if (allRes.status === 'fulfilled' && allRes.value.ok) {
+          const allData: { downloads?: Array<{ downloads: number }> } =
+            await allRes.value.json()
+          if (Array.isArray(allData.downloads)) {
+            allTime = allData.downloads.reduce((sum, d) => sum + d.downloads, 0)
+          }
+        }
+
+        map.set(pkg.name, {
+          'last-week': week,
+          'last-month': month,
+          'all-time': allTime,
+        })
+      })
+    )
+    return map
+  }
+)
+
+const fetchSizes = cache(
+  async (packages: Pkg[]): Promise<Map<string, number>> => {
+    const map = new Map<string, number>()
+    await Promise.allSettled(
+      packages.map(async pkg => {
+        try {
+          const res = await fetch(
+            `https://registry.npmjs.org/${encodeURIComponent(pkg.name)}/latest`,
+            { next: { revalidate: 3600 } }
+          )
+          if (!res.ok) return
+          const data: { dist?: { unpackedSize?: number } } = await res.json()
+          if (
+            data.dist !== undefined &&
+            typeof data.dist.unpackedSize === 'number'
+          ) {
+            map.set(pkg.name, data.dist.unpackedSize)
+          }
+        } catch {
+          // ignore
+        }
+      })
+    )
+    return map
+  }
+)
+
+const fetchSparklines = cache(
+  async (packages: Pkg[]): Promise<Map<string, number[]>> => {
+    const map = new Map<string, number[]>()
+    await Promise.allSettled(
+      packages.map(async pkg => {
+        try {
+          const res = await fetch(
+            `https://api.npmjs.org/downloads/range/last-year/${encodeURIComponent(pkg.name)}`,
+            { cache: 'force-cache' }
+          )
+          if (!res.ok) return
+          const data: NpmRangeResult = await res.json()
+          const monthly = new Map<string, number>()
+          for (const { day, downloads } of data.downloads) {
+            const month = day.slice(0, 7)
+            const prev = monthly.get(month)
+            monthly.set(month, (prev !== undefined ? prev : 0) + downloads)
+          }
+          const sorted = Array.from(monthly.keys()).sort()
+          const points = sorted.slice(-12).map(m => {
+            const v = monthly.get(m)
+            return v !== undefined ? v : 0
+          })
+          if (points.length >= 2) map.set(pkg.name, points)
+        } catch {
+          // ignore
+        }
+      })
+    )
+    return map
+  }
+)
+
+const fetchPublishDates = cache(
+  async (packages: Pkg[]): Promise<Map<string, string>> => {
+    const map = new Map<string, string>()
+    await Promise.allSettled(
+      packages.map(async pkg => {
+        try {
+          const res = await fetch(
+            `https://registry.npmjs.org/${encodeURIComponent(pkg.name)}`,
+            { cache: 'force-cache' }
+          )
+          if (!res.ok) return
+          const data: NpmRegistryResponse = await res.json()
+          const time = data.time
+          if (time === null || time === undefined) return
+          const modified = time.modified
+          if (typeof modified === 'string') {
+            map.set(pkg.name, modified)
+          }
+        } catch {
+          // ignore
+        }
+      })
+    )
+    return map
+  }
+)
+
+function fmtRelativeDate(iso: string | null): string {
+  if (iso === null) return '—'
+  const date = new Date(iso)
+  if (isNaN(date.getTime())) return '—'
+  const diffMs = date.getTime() - Date.now()
+  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24))
+  const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' })
+  if (Math.abs(diffDays) < 1) return 'today'
+  if (Math.abs(diffDays) < 30) return rtf.format(diffDays, 'day')
+  const diffMonths = Math.round(diffDays / 30.44)
+  if (Math.abs(diffMonths) < 12) return rtf.format(diffMonths, 'month')
+  const diffYears = Math.round(diffDays / 365.25)
+  return rtf.format(diffYears, 'year')
 }
 
-function fmt(n: number | null): string {
+function fmtBytes(n: number | null): string {
   if (n === null) return '—'
-  return n.toLocaleString('en-US')
+  if (n < 1000) return `${n} B`
+  if (n < 1_000_000) return `${(n / 1000).toFixed(1)} kB`
+  return `${(n / 1_000_000).toFixed(1)} MB`
 }
 
 function npmUrl(name: string): string {
   return `https://www.npmjs.com/package/${encodeURIComponent(name)}`
 }
 
-function SectionHeader({
-  title,
-  count,
-  delay,
-}: {
-  title: string
-  count: number
-  delay: number
-}) {
+function Sparkline({ data }: { data: number[] }) {
+  const W = 56
+  const H = 20
+  const min = Math.min(...data)
+  const max = Math.max(...data)
+  const range = max - min || 1
+  const points = data
+    .map((v, i) => {
+      const x = ((i / (data.length - 1)) * W).toFixed(1)
+      const y = (H - ((v - min) / range) * (H - 4) - 2).toFixed(1)
+      return `${x},${y}`
+    })
+    .join(' ')
+  const mid = Math.floor(data.length / 2)
+  const avg = (arr: number[]) => arr.reduce((a, b) => a + b, 0) / arr.length
+  const overall = avg(data)
+  const threshold = overall * 0.05
+  const trend = avg(data.slice(mid)) - avg(data.slice(0, mid))
+  const stroke =
+    trend > threshold
+      ? 'var(--c-green)'
+      : trend < -threshold
+        ? '#e05c5c'
+        : 'var(--c-muted)'
   return (
-    <div
-      className="section-header animate-in"
-      style={{ animationDelay: `${delay}ms`, opacity: 0 }}
-    >
-      <span className="name">{title}</span>
-      <span className="line" />
-      <span style={{ whiteSpace: 'nowrap' }}>
-        {count} package{count !== 1 ? 's' : ''}
-      </span>
-    </div>
+    <svg width={W} height={H} aria-hidden="true" className="pkg-sparkline">
+      <polyline
+        points={points}
+        fill="none"
+        stroke={stroke}
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+    </svg>
   )
 }
 
-function PkgRow({ pkg, delay }: { pkg: Pkg; delay: number }) {
+// ── Async data components ────────────────────────────────────────────────────
+
+async function HeaderStats() {
+  const discovered = await fetchPackages()
+  const stats = await fetchStats(discovered)
+
+  const totals: Record<Period, number> = {
+    'last-week': 0,
+    'last-month': 0,
+    'all-time': 0,
+  }
+  for (const pkg of discovered) {
+    const pkgStats = stats.get(pkg.name)
+    if (pkgStats === undefined) continue
+    const weekStat = pkgStats['last-week']
+    const monthStat = pkgStats['last-month']
+    const allStat = pkgStats['all-time']
+    if (weekStat !== null) totals['last-week'] += weekStat
+    if (monthStat !== null) totals['last-month'] += monthStat
+    if (allStat !== null) totals['all-time'] += allStat
+  }
+
+  return (
+    <HeaderTotalsDisplay totals={totals} packageCount={discovered.length} />
+  )
+}
+
+function PkgRow({
+  pkg,
+  delay,
+  sparkline,
+}: {
+  pkg: Pkg
+  delay: number
+  sparkline: number[] | undefined
+}) {
   return (
     <div
       className="pkg-row animate-in"
-      style={{ animationDelay: `${delay}ms`, opacity: 0 }}
+      style={{ animationDelay: `${delay}ms` }}
     >
       {/* indicator dot */}
-      <span
-        style={{
-          display: 'inline-block',
-          width: '5px',
-          height: '5px',
-          borderRadius: '50%',
-          background: 'var(--c-accent)',
-          opacity: 0.7,
-          alignSelf: 'center',
-          flexShrink: 0,
-        }}
-      />
+      <span className="pkg-dot" />
 
       {/* name + description */}
-      <div style={{ minWidth: 0 }}>
+      <div className="pkg-name-col">
         <a
           className="pkg-link"
           href={npmUrl(pkg.name)}
           target="_blank"
           rel="noopener noreferrer"
-          style={{ fontSize: '0.85rem' }}
         >
           {pkg.name}
         </a>
-        <p
-          style={{
-            color: 'var(--c-muted)',
-            fontSize: '0.7rem',
-            marginTop: '0.2rem',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {pkg.description}
-        </p>
+        <p className="pkg-desc">{pkg.description}</p>
       </div>
 
       {/* version */}
-      <span
-        style={{
-          color: 'var(--c-muted)',
-          fontSize: '0.72rem',
-          whiteSpace: 'nowrap',
-          paddingTop: '0.15rem',
-        }}
-      >
-        v{pkg.version}
-      </span>
+      <span className="pkg-version">v{pkg.version}</span>
+
+      {/* publish date */}
+      <span className="pkg-date">{fmtRelativeDate(pkg.publishedAt)}</span>
+
+      {/* sparkline */}
+      {sparkline !== undefined && sparkline.length >= 2 ? (
+        <Sparkline data={sparkline} />
+      ) : (
+        <span aria-hidden="true" className="pkg-sparkline" />
+      )}
 
       {/* downloads */}
-      <span
-        style={{
-          color: 'var(--c-text)',
-          fontSize: '0.75rem',
-          whiteSpace: 'nowrap',
-          paddingTop: '0.15rem',
-          textAlign: 'right',
-          minWidth: '6rem',
-        }}
-      >
-        <span style={{ color: 'var(--c-muted)', marginRight: '0.3rem' }}>
-          ↓
-        </span>
-        <span style={{ fontWeight: 500 }}>{fmt(pkg.downloads)}</span>
-        {pkg.downloads !== null && (
-          <span style={{ color: 'var(--c-muted)', fontSize: '0.65rem' }}>
-            /mo
-          </span>
-        )}
+      <DownloadsCell downloads={pkg.downloads} />
+
+      {/* unpacked size */}
+      <span className="pkg-size">
+        <span className="pkg-size-icon">⊞</span>
+        <span className="pkg-size-val">{fmtBytes(pkg.unpackedSize)}</span>
       </span>
 
       {/* npm link */}
@@ -219,310 +368,126 @@ function PkgRow({ pkg, delay }: { pkg: Pkg; delay: number }) {
         target="_blank"
         rel="noopener noreferrer"
         className="npm-link"
-        style={{ paddingTop: '0.15rem' }}
       >
         npm ↗
       </a>
+
+      {/* copy install command */}
+      <CopyButton pkgName={pkg.name} />
     </div>
   )
 }
 
-export default async function Home() {
-  const stats = await fetchStats()
+async function PackageList() {
+  const discovered = await fetchPackages()
+  const [stats, sizes, sparklines, dates] = await Promise.all([
+    fetchStats(discovered),
+    fetchSizes(discovered),
+    fetchSparklines(discovered),
+    fetchPublishDates(discovered),
+  ])
 
-  const packages: Pkg[] = FALLBACK.map(pkg => ({
-    ...pkg,
-    downloads: stats.get(pkg.name) ?? pkg.downloads,
-  }))
-
-  const core = packages.filter(p => p.group === 'core')
-  const installer = packages.filter(p => p.group === 'installer')
-  const platform = packages.filter(p => p.group === 'platform')
-  const assets = packages.filter(p => p.group === 'assets')
-
-  const totalDownloads = packages.reduce((s, p) => s + (p.downloads ?? 0), 0)
+  const packages: Pkg[] = discovered.map(pkg => {
+    const pkgStats = stats.get(pkg.name)
+    const sizeValue = sizes.get(pkg.name)
+    const dateStr = dates.get(pkg.name)
+    return {
+      ...pkg,
+      downloads: pkgStats !== undefined ? pkgStats : pkg.downloads,
+      unpackedSize: sizeValue !== undefined ? sizeValue : null,
+      publishedAt: dateStr !== undefined ? dateStr : null,
+    }
+  })
 
   return (
-    <main
-      style={{
-        minHeight: '100vh',
-        background: 'var(--c-bg)',
-        color: 'var(--c-text)',
-        fontFamily: "'IBM Plex Mono', monospace",
-      }}
-    >
-      {/* Top amber line */}
+    <>
       <div
-        style={{
-          height: '2px',
-          background:
-            'linear-gradient(90deg, var(--c-accent) 0%, transparent 100%)',
-        }}
-      />
-
-      {/* Header */}
-      <header
-        className="animate-in"
-        style={{
-          borderBottom: '1px solid var(--c-border)',
-          padding: '2.5rem 2rem 2rem',
-          animationDelay: '0ms',
-          opacity: 0,
-        }}
+        className="section-header animate-in"
+        style={{ animationDelay: '80ms' }}
       >
-        <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'flex-start',
-              gap: '2rem',
-            }}
-          >
-            {/* Title */}
-            <div>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'baseline',
-                  gap: '0.75rem',
-                  marginBottom: '0.5rem',
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: '1.75rem',
-                    fontWeight: 600,
-                    color: 'var(--c-accent)',
-                    letterSpacing: '0.12em',
-                  }}
-                >
-                  CENTY
-                </span>
-                <span
-                  style={{
-                    fontSize: '0.8rem',
-                    color: 'var(--c-muted)',
-                    letterSpacing: '0.25em',
-                    fontWeight: 300,
-                  }}
-                >
-                  PACKAGES
-                </span>
-              </div>
-              <p
-                style={{
-                  color: 'var(--c-muted)',
-                  fontSize: '0.75rem',
-                  letterSpacing: '0.04em',
-                }}
-              >
-                npm packages in the Centy ecosystem
-              </p>
-            </div>
-
-            {/* Stats */}
-            <div style={{ textAlign: 'right', flexShrink: 0 }}>
-              <div
-                style={{
-                  fontSize: '0.6rem',
-                  color: 'var(--c-muted)',
-                  letterSpacing: '0.15em',
-                  marginBottom: '0.35rem',
-                }}
-              >
-                TOTAL DOWNLOADS / MONTH
-              </div>
-              <div
-                style={{
-                  fontSize: '2rem',
-                  fontWeight: 600,
-                  color: 'var(--c-accent)',
-                  lineHeight: 1,
-                }}
-              >
-                {totalDownloads.toLocaleString('en-US')}
-              </div>
-              <div
-                style={{
-                  fontSize: '0.65rem',
-                  color: 'var(--c-muted)',
-                  marginTop: '0.4rem',
-                }}
-              >
-                across {packages.length} packages
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Package registry */}
-      <div
-        style={{
-          maxWidth: '900px',
-          margin: '0 auto',
-          padding: '0 2rem 4rem',
-        }}
-      >
-        {/* CORE */}
-        <SectionHeader title="CORE" count={core.length} delay={100} />
-        <div
-          className="animate-in"
-          style={{
-            border: '1px solid var(--c-border)',
-            borderRadius: '4px',
-            overflow: 'hidden',
-            animationDelay: '150ms',
-            opacity: 0,
-          }}
-        >
-          {core.map((pkg, i) => (
-            <PkgRow key={pkg.name} pkg={pkg} delay={150 + i * 40} />
-          ))}
-        </div>
-
-        {/* INSTALLER */}
-        <SectionHeader
-          title="INSTALLER"
-          count={installer.length + platform.length}
-          delay={300}
-        />
-        <div
-          className="animate-in"
-          style={{
-            border: '1px solid var(--c-border)',
-            borderRadius: '4px',
-            overflow: 'hidden',
-            animationDelay: '350ms',
-            opacity: 0,
-          }}
-        >
-          {installer.map((pkg, i) => (
-            <PkgRow key={pkg.name} pkg={pkg} delay={350 + i * 40} />
-          ))}
-
-          {/* Platform binaries sub-table */}
-          <div
-            className="animate-in"
-            style={{
-              borderTop: '1px solid var(--c-border)',
-              background: 'var(--c-bg2)',
-              animationDelay: '400ms',
-              opacity: 0,
-            }}
-          >
-            <div
-              style={{
-                padding: '0.5rem 1rem 0.35rem 2.5rem',
-                fontSize: '0.62rem',
-                color: 'var(--c-muted)',
-                letterSpacing: '0.12em',
-                borderBottom: '1px solid var(--c-border)',
-              }}
-            >
-              PLATFORM BINARIES
-            </div>
-            {platform.map(pkg => (
-              <div key={pkg.name} className="platform-row">
-                <a
-                  className="pkg-link"
-                  href={npmUrl(pkg.name)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ fontSize: '0.72rem' }}
-                >
-                  {pkg.name}
-                </a>
-                <span style={{ color: 'var(--c-muted)', fontSize: '0.68rem' }}>
-                  {pkg.description}
-                </span>
-                <span
-                  style={{
-                    color: 'var(--c-muted)',
-                    fontSize: '0.68rem',
-                    textAlign: 'right',
-                  }}
-                >
-                  <span style={{ marginRight: '0.25rem' }}>↓</span>
-                  {fmt(pkg.downloads)}
-                  {pkg.downloads !== null && (
-                    <span style={{ fontSize: '0.6rem' }}>/mo</span>
-                  )}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* ASSETS */}
-        <SectionHeader title="ASSETS" count={assets.length} delay={520} />
-        <div
-          className="animate-in"
-          style={{
-            border: '1px solid var(--c-border)',
-            borderRadius: '4px',
-            overflow: 'hidden',
-            animationDelay: '570ms',
-            opacity: 0,
-          }}
-        >
-          {assets.map((pkg, i) => (
-            <PkgRow key={pkg.name} pkg={pkg} delay={570 + i * 40} />
-          ))}
-        </div>
-
-        {/* Official badge note */}
-        <div
-          className="animate-in"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            marginTop: '2rem',
-            fontSize: '0.65rem',
-            color: 'var(--c-muted)',
-            animationDelay: '650ms',
-            opacity: 0,
-          }}
-        >
-          <span className="badge badge-official">✓ official</span>
-          <span>
-            All listed packages are officially maintained by the Centy team
-          </span>
-        </div>
+        <span className="name">PACKAGES</span>
+        <span className="line" />
+        <PeriodToggle />
       </div>
 
-      {/* Footer */}
-      <footer
-        style={{
-          borderTop: '1px solid var(--c-border)',
-          padding: '1.25rem 2rem',
-          textAlign: 'center',
-        }}
-      >
-        <p
-          style={{
-            color: 'var(--c-muted)',
-            fontSize: '0.65rem',
-            letterSpacing: '0.05em',
-          }}
-        >
-          Data sourced from{' '}
-          <a
-            href="https://www.npmjs.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              color: 'var(--c-accent)',
-              textDecoration: 'none',
-            }}
-          >
-            npmjs.com
-          </a>{' '}
-          · Updated at build time · All packages are official Centy releases
-        </p>
-      </footer>
-    </main>
+      <div className="animate-in pkg-list">
+        {packages.map((pkg, i) => (
+          <PkgRow
+            key={pkg.name}
+            pkg={pkg}
+            delay={100 + i * 40}
+            sparkline={sparklines.get(pkg.name)}
+          />
+        ))}
+      </div>
+
+      {/* Official badge note */}
+      <div className="animate-in pkg-badge-note">
+        <span className="badge badge-official">✓ official</span>
+        <span className="pkg-badge-note-text">
+          All listed packages are officially maintained by the Centy team
+        </span>
+      </div>
+    </>
+  )
+}
+
+// ── Page shell ───────────────────────────────────────────────────────────────
+
+export default function Home() {
+  return (
+    <PeriodProvider>
+      <main className="page-main">
+        {/* Top amber line */}
+        <div className="top-accent-line" />
+
+        {/* Header */}
+        <header className="animate-in header-outer">
+          <div className="header-inner">
+            <div className="header-flex">
+              {/* Title */}
+              <div className="header-title">
+                <div className="header-title-row">
+                  <span className="header-logo">CENTY</span>
+                  <span className="header-subtitle">PACKAGES</span>
+                </div>
+                <p className="header-tagline">
+                  npm packages in the Centy ecosystem
+                </p>
+              </div>
+
+              {/* Stats — streams in independently */}
+              <Suspense fallback={<HeaderStatsSkeleton />}>
+                <HeaderStats />
+              </Suspense>
+            </div>
+          </div>
+        </header>
+
+        {/* Package list */}
+        <div className="main-content">
+          <PackageManagerToggle />
+          <Suspense fallback={<SectionSkeleton rowCount={9} />}>
+            <PackageList />
+          </Suspense>
+        </div>
+
+        {/* Footer */}
+        <footer className="page-footer">
+          <p className="footer-text">
+            Data sourced from{' '}
+            <a
+              href="https://www.npmjs.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="footer-link"
+            >
+              npmjs.com
+            </a>{' '}
+            · Updated at build time · All packages are official Centy releases
+          </p>
+        </footer>
+      </main>
+    </PeriodProvider>
   )
 }

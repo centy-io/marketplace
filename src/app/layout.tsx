@@ -2,8 +2,29 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Marketplace',
-  description: 'Centy Marketplace',
+  metadataBase: new URL('https://marketplace.centy.io'),
+  title: 'Centy · npm Packages',
+  description: 'All npm packages in the Centy ecosystem',
+  openGraph: {
+    title: 'Centy · npm Packages',
+    description: 'All npm packages in the Centy ecosystem',
+    url: 'https://marketplace.centy.io',
+    type: 'website',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'Centy npm Packages',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Centy · npm Packages',
+    description: 'All npm packages in the Centy ecosystem',
+    images: ['/og-image.png'],
+  },
   icons: {
     icon: [
       { url: '/favicon.ico' },
