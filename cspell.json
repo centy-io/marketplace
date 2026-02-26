@@ -1,0 +1,14 @@
+{
+  "version": "0.2",
+  "language": "en",
+  "import": [".centy/cspell.json"],
+  "words": ["networkidle", "mswjs", "chromium", "allsettled", "Playwright"],
+  "ignorePaths": [
+    "node_modules",
+    ".next",
+    "pnpm-lock.yaml",
+    "tests/screenshots",
+    "test-results",
+    "playwright-report"
+  ]
+}
