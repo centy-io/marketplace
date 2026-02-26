@@ -83,7 +83,7 @@ async function fetchStats(): Promise<Map<string, number>> {
           { cache: 'force-cache' }
         )
         if (!res.ok) return
-        const data = (await res.json()) as { downloads?: number }
+        const data: { downloads?: number } = await res.json()
         if (typeof data.downloads === 'number') {
           map.set(pkg.name, data.downloads)
         }
@@ -223,16 +223,22 @@ function PkgRow({ pkg, delay }: { pkg: Pkg; delay: number }) {
 export default async function Home() {
   const stats = await fetchStats()
 
-  const packages: Pkg[] = FALLBACK.map(pkg => ({
-    ...pkg,
-    downloads: stats.get(pkg.name) ?? pkg.downloads,
-  }))
+  const packages: Pkg[] = FALLBACK.map(pkg => {
+    const statsDownloads = stats.get(pkg.name)
+    return {
+      ...pkg,
+      downloads: statsDownloads !== undefined ? statsDownloads : pkg.downloads,
+    }
+  })
 
   const core = packages.filter(p => p.group === 'core')
   const installer = packages.filter(p => p.group === 'installer')
   const platform = packages.filter(p => p.group === 'platform')
 
-  const totalDownloads = packages.reduce((s, p) => s + (p.downloads ?? 0), 0)
+  const totalDownloads = packages.reduce(
+    (s, p) => s + (p.downloads !== null ? p.downloads : 0),
+    0
+  )
 
   return (
     <main
