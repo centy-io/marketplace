@@ -28,13 +28,10 @@ export default [
   {
     // Project-specific overrides: disable rules that are not appropriate for this codebase.
     rules: {
-      // This project uses inline styles; requiring className on every HTML element is not applicable.
-      'jsx-classname/require-classname': 'off',
       // npm registry URLs are intentional constants, not secrets or configurable endpoints.
       'default/no-hardcoded-urls': 'off',
       // Next.js pages are legitimately larger than generic 100/70-line limits.
       'max-lines': ['warn', { max: 600, skipBlankLines: true, skipComments: true }],
-      'max-lines-per-function': ['warn', { max: 300, skipBlankLines: true, skipComments: true }],
     },
   },
   {
@@ -46,12 +43,19 @@ export default [
     },
   },
   {
+    // Next.js special route convention files: robots.ts and sitemap.ts are framework-generated
+    // endpoints, not application logic that requires spec coverage.
+    files: ['src/app/robots.ts', 'src/app/sitemap.ts'],
+    rules: {
+      'ddd/require-spec-file': 'off',
+    },
+  },
+  {
     // MSW mock files: spec files and url-hardcoding rules don't apply to test infrastructure.
     files: ['src/mocks/**'],
     rules: {
       'ddd/require-spec-file': 'off',
       'default/no-hardcoded-urls': 'off',
-      'security/detect-object-injection': 'off',
     },
   },
 ]
