@@ -48,7 +48,6 @@ export default [
     rules: {
       'ddd/require-spec-file': 'off',
       'default/no-hardcoded-urls': 'off',
-      'security/detect-object-injection': 'off',
     },
   },
 ]
