@@ -1,53 +1,33 @@
 function PkgRowSkeleton() {
   return (
     <div className="pkg-row" aria-hidden="true">
-      <span
-        style={{
-          display: 'inline-block',
-          width: '5px',
-          height: '5px',
-          borderRadius: '50%',
-          background: 'var(--c-bg3)',
-          alignSelf: 'center',
-          flexShrink: 0,
-        }}
-      />
-      <div
-        style={{
-          minWidth: 0,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '0.4rem',
-        }}
-      >
-        <div className="skeleton" style={{ height: '0.75rem', width: '55%' }} />
-        <div className="skeleton" style={{ height: '0.6rem', width: '75%' }} />
+      <span className="pkg-dot-skeleton" />
+      <div className="skeleton-name-col">
+        <div className="skeleton skeleton-pkg-name" />
+        <div className="skeleton skeleton-pkg-desc" />
       </div>
-      <div className="skeleton" style={{ height: '0.7rem', width: '3.5rem' }} />
-      <div className="skeleton" style={{ height: '0.7rem', width: '5rem' }} />
-      <div
-        className="skeleton"
-        style={{ height: '0.65rem', width: '2.5rem' }}
-      />
+      <div className="skeleton skeleton-ver-md" />
+      <div className="skeleton pkg-date skeleton-date" />
+      <div className="skeleton pkg-sparkline" />
+      <div className="skeleton skeleton-ver-lg" />
+      <div className="skeleton skeleton-dl" />
     </div>
   )
 }
 
 export function SectionSkeleton({ rowCount }: { rowCount: number }) {
   return (
-    <div aria-busy="true" aria-label="Loading packages">
+    <div
+      className="section-loading"
+      aria-busy="true"
+      aria-label="Loading packages"
+    >
       <div className="section-header">
-        <div className="skeleton" style={{ height: '0.7rem', width: '4rem' }} />
+        <div className="skeleton skeleton-label-sm" />
         <span className="line" />
-        <div className="skeleton" style={{ height: '0.7rem', width: '7rem' }} />
+        <div className="skeleton skeleton-label-lg" />
       </div>
-      <div
-        style={{
-          border: '1px solid var(--c-border)',
-          borderRadius: '4px',
-          overflow: 'hidden',
-        }}
-      >
+      <div className="skeleton-section-list">
         {Array.from({ length: rowCount }, (_, i) => (
           <PkgRowSkeleton key={i} />
         ))}
@@ -59,33 +39,13 @@ export function SectionSkeleton({ rowCount }: { rowCount: number }) {
 export function HeaderStatsSkeleton() {
   return (
     <div
-      style={{ textAlign: 'right', flexShrink: 0 }}
+      className="header-stats"
       aria-busy="true"
       aria-label="Loading download statistics"
     >
-      <div
-        style={{
-          fontSize: '0.6rem',
-          color: 'var(--c-muted)',
-          letterSpacing: '0.15em',
-          marginBottom: '0.35rem',
-        }}
-      >
-        TOTAL DOWNLOADS / MONTH
-      </div>
-      <div
-        className="skeleton"
-        style={{ height: '2rem', width: '7rem', marginLeft: 'auto' }}
-      />
-      <div
-        className="skeleton"
-        style={{
-          height: '0.65rem',
-          width: '9rem',
-          marginTop: '0.4rem',
-          marginLeft: 'auto',
-        }}
-      />
+      <div className="header-stats-label">TOTAL DOWNLOADS / MONTH</div>
+      <div className="skeleton skeleton-total" />
+      <div className="skeleton skeleton-total-count" />
     </div>
   )
 }
