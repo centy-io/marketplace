@@ -43,6 +43,14 @@ export default [
     },
   },
   {
+    // Next.js special route convention files: robots.ts and sitemap.ts are framework-generated
+    // endpoints, not application logic that requires spec coverage.
+    files: ['src/app/robots.ts', 'src/app/sitemap.ts'],
+    rules: {
+      'ddd/require-spec-file': 'off',
+    },
+  },
+  {
     // MSW mock files: spec files and url-hardcoding rules don't apply to test infrastructure.
     files: ['src/mocks/**'],
     rules: {
