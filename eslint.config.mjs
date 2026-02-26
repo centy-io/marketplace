@@ -45,9 +45,11 @@ export default [
   {
     // Next.js special route convention files: robots.ts and sitemap.ts are framework-generated
     // endpoints, not application logic that requires spec coverage.
+    // `export const dynamic` is a Next.js-required named export alongside the default export.
     files: ['src/app/robots.ts', 'src/app/sitemap.ts'],
     rules: {
       'ddd/require-spec-file': 'off',
+      'single-export/single-export': 'off',
     },
   },
   {
