@@ -171,20 +171,9 @@ function PkgRow({ pkg, delay }: { pkg: Pkg; delay: number }) {
       </span>
 
       {/* unpacked size */}
-      <span
-        style={{
-          color: 'var(--c-text)',
-          fontSize: '0.75rem',
-          whiteSpace: 'nowrap',
-          paddingTop: '0.15rem',
-          textAlign: 'right',
-          minWidth: '4.5rem',
-        }}
-      >
-        <span style={{ color: 'var(--c-muted)', marginRight: '0.3rem' }}>
-          ⊞
-        </span>
-        <span style={{ fontWeight: 500 }}>{fmtBytes(pkg.unpackedSize)}</span>
+      <span className="pkg-size">
+        <span className="pkg-size-icon">⊞</span>
+        <span className="pkg-size-val">{fmtBytes(pkg.unpackedSize)}</span>
       </span>
 
       {/* npm link */}
