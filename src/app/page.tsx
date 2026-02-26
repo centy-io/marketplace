@@ -3,6 +3,12 @@ import type { Metadata } from 'next'
 import { HeaderStatsSkeleton, SectionSkeleton } from './skeletons'
 import CopyButton from './CopyButton'
 import PackageManagerToggle from './PackageManagerToggle'
+import { PeriodProvider, type Period } from './period-context'
+import {
+  PeriodToggle,
+  DownloadsCell,
+  HeaderTotalsDisplay,
+} from './period-toggle'
 
 export const metadata: Metadata = {
   title: 'Centy · npm Packages',
@@ -13,7 +19,7 @@ interface Pkg {
   name: string
   version: string
   description: string
-  downloads: number | null
+  downloads: Record<Period, number | null>
   unpackedSize: number | null
   publishedAt: string | null
 }
@@ -32,8 +38,20 @@ interface NpmRangeResult {
   downloads: Array<{ day: string; downloads: number }>
 }
 
+interface NpmRegistryTime {
+  modified?: string
+}
+
+interface NpmRegistryResponse {
+  time?: NpmRegistryTime
+}
+
 function isCentyPackage(name: string): boolean {
   return name.startsWith('centy-')
+}
+
+function getToday(): string {
+  return new Date().toISOString().split('T')[0]
 }
 
 const fetchPackages = cache(async (): Promise<Pkg[]> => {
@@ -50,30 +68,64 @@ const fetchPackages = cache(async (): Promise<Pkg[]> => {
       name: pkg.name,
       version: pkg.version,
       description: pkg.description,
-      downloads: null,
+      downloads: { 'last-week': null, 'last-month': null, 'all-time': null },
       unpackedSize: null,
       publishedAt: null,
     }))
 })
 
 const fetchStats = cache(
-  async (packages: Pkg[]): Promise<Map<string, number>> => {
-    const map = new Map<string, number>()
+  async (
+    packages: Pkg[]
+  ): Promise<Map<string, Record<Period, number | null>>> => {
+    const map = new Map<string, Record<Period, number | null>>()
     await Promise.allSettled(
       packages.map(async pkg => {
-        try {
-          const res = await fetch(
-            `https://api.npmjs.org/downloads/point/last-month/${encodeURIComponent(pkg.name)}`,
-            { cache: 'force-cache' }
-          )
-          if (!res.ok) return
-          const data: { downloads?: number } = await res.json()
-          if (typeof data.downloads === 'number') {
-            map.set(pkg.name, data.downloads)
-          }
-        } catch {
-          // ignore
+        const encoded = encodeURIComponent(pkg.name)
+        const opts = { next: { revalidate: 3600 } }
+        const [weekRes, monthRes, allRes] = await Promise.allSettled([
+          fetch(
+            `https://api.npmjs.org/downloads/point/last-week/${encoded}`,
+            opts
+          ),
+          fetch(
+            `https://api.npmjs.org/downloads/point/last-month/${encoded}`,
+            opts
+          ),
+          fetch(
+            `https://api.npmjs.org/downloads/range/2000-01-01:${getToday()}/${encoded}`,
+            opts
+          ),
+        ])
+
+        let week: number | null = null
+        if (weekRes.status === 'fulfilled' && weekRes.value.ok) {
+          const weekData: { downloads?: number } = await weekRes.value.json()
+          week =
+            typeof weekData.downloads === 'number' ? weekData.downloads : null
         }
+
+        let month: number | null = null
+        if (monthRes.status === 'fulfilled' && monthRes.value.ok) {
+          const monthData: { downloads?: number } = await monthRes.value.json()
+          month =
+            typeof monthData.downloads === 'number' ? monthData.downloads : null
+        }
+
+        let allTime: number | null = null
+        if (allRes.status === 'fulfilled' && allRes.value.ok) {
+          const allData: { downloads?: Array<{ downloads: number }> } =
+            await allRes.value.json()
+          if (Array.isArray(allData.downloads)) {
+            allTime = allData.downloads.reduce((sum, d) => sum + d.downloads, 0)
+          }
+        }
+
+        map.set(pkg.name, {
+          'last-week': week,
+          'last-month': month,
+          'all-time': allTime,
+        })
       })
     )
     return map
@@ -140,14 +192,6 @@ const fetchSparklines = cache(
   }
 )
 
-interface NpmRegistryTime {
-  modified?: string
-}
-
-interface NpmRegistryResponse {
-  time?: NpmRegistryTime
-}
-
 const fetchPublishDates = cache(
   async (packages: Pkg[]): Promise<Map<string, string>> => {
     const map = new Map<string, string>()
@@ -197,11 +241,6 @@ function fmtBytes(n: number | null): string {
   return `${(n / 1_000_000).toFixed(1)} MB`
 }
 
-function fmt(n: number | null): string {
-  if (n === null) return '—'
-  return n.toLocaleString('en-US')
-}
-
 function npmUrl(name: string): string {
   return `https://www.npmjs.com/package/${encodeURIComponent(name)}`
 }
@@ -249,21 +288,25 @@ function Sparkline({ data }: { data: number[] }) {
 async function HeaderStats() {
   const discovered = await fetchPackages()
   const stats = await fetchStats(discovered)
-  const totalDownloads = discovered.reduce((s, p) => {
-    const d = stats.get(p.name)
-    return s + (d !== undefined ? d : p.downloads !== null ? p.downloads : 0)
-  }, 0)
+
+  const totals: Record<Period, number> = {
+    'last-week': 0,
+    'last-month': 0,
+    'all-time': 0,
+  }
+  for (const pkg of discovered) {
+    const pkgStats = stats.get(pkg.name)
+    if (pkgStats === undefined) continue
+    const weekStat = pkgStats['last-week']
+    const monthStat = pkgStats['last-month']
+    const allStat = pkgStats['all-time']
+    if (weekStat !== null) totals['last-week'] += weekStat
+    if (monthStat !== null) totals['last-month'] += monthStat
+    if (allStat !== null) totals['all-time'] += allStat
+  }
 
   return (
-    <div className="header-stats">
-      <div className="header-stats-label">TOTAL DOWNLOADS / MONTH</div>
-      <div className="header-stats-total">
-        {totalDownloads.toLocaleString('en-US')}
-      </div>
-      <div className="header-stats-count">
-        across {discovered.length} packages
-      </div>
-    </div>
+    <HeaderTotalsDisplay totals={totals} packageCount={discovered.length} />
   )
 }
 
@@ -311,11 +354,7 @@ function PkgRow({
       )}
 
       {/* downloads */}
-      <span className="pkg-downloads">
-        <span className="pkg-dl-arrow">↓</span>
-        <span className="pkg-dl-count">{fmt(pkg.downloads)}</span>
-        {pkg.downloads !== null && <span className="pkg-dl-unit">/mo</span>}
-      </span>
+      <DownloadsCell downloads={pkg.downloads} />
 
       {/* unpacked size */}
       <span className="pkg-size">
@@ -349,12 +388,12 @@ async function PackageList() {
   ])
 
   const packages: Pkg[] = discovered.map(pkg => {
-    const statsDownloads = stats.get(pkg.name)
+    const pkgStats = stats.get(pkg.name)
     const sizeValue = sizes.get(pkg.name)
     const dateStr = dates.get(pkg.name)
     return {
       ...pkg,
-      downloads: statsDownloads !== undefined ? statsDownloads : pkg.downloads,
+      downloads: pkgStats !== undefined ? pkgStats : pkg.downloads,
       unpackedSize: sizeValue !== undefined ? sizeValue : null,
       publishedAt: dateStr !== undefined ? dateStr : null,
     }
@@ -362,6 +401,15 @@ async function PackageList() {
 
   return (
     <>
+      <div
+        className="section-header animate-in"
+        style={{ animationDelay: '80ms' }}
+      >
+        <span className="name">PACKAGES</span>
+        <span className="line" />
+        <PeriodToggle />
+      </div>
+
       <div className="animate-in pkg-list">
         {packages.map((pkg, i) => (
           <PkgRow
@@ -388,56 +436,58 @@ async function PackageList() {
 
 export default function Home() {
   return (
-    <main className="page-main">
-      {/* Top amber line */}
-      <div className="top-accent-line" />
+    <PeriodProvider>
+      <main className="page-main">
+        {/* Top amber line */}
+        <div className="top-accent-line" />
 
-      {/* Header */}
-      <header className="animate-in header-outer">
-        <div className="header-inner">
-          <div className="header-flex">
-            {/* Title */}
-            <div className="header-title">
-              <div className="header-title-row">
-                <span className="header-logo">CENTY</span>
-                <span className="header-subtitle">PACKAGES</span>
+        {/* Header */}
+        <header className="animate-in header-outer">
+          <div className="header-inner">
+            <div className="header-flex">
+              {/* Title */}
+              <div className="header-title">
+                <div className="header-title-row">
+                  <span className="header-logo">CENTY</span>
+                  <span className="header-subtitle">PACKAGES</span>
+                </div>
+                <p className="header-tagline">
+                  npm packages in the Centy ecosystem
+                </p>
               </div>
-              <p className="header-tagline">
-                npm packages in the Centy ecosystem
-              </p>
+
+              {/* Stats — streams in independently */}
+              <Suspense fallback={<HeaderStatsSkeleton />}>
+                <HeaderStats />
+              </Suspense>
             </div>
-
-            {/* Stats — streams in independently */}
-            <Suspense fallback={<HeaderStatsSkeleton />}>
-              <HeaderStats />
-            </Suspense>
           </div>
+        </header>
+
+        {/* Package list */}
+        <div className="main-content">
+          <PackageManagerToggle />
+          <Suspense fallback={<SectionSkeleton rowCount={9} />}>
+            <PackageList />
+          </Suspense>
         </div>
-      </header>
 
-      {/* Package list */}
-      <div className="main-content">
-        <PackageManagerToggle />
-        <Suspense fallback={<SectionSkeleton rowCount={9} />}>
-          <PackageList />
-        </Suspense>
-      </div>
-
-      {/* Footer */}
-      <footer className="page-footer">
-        <p className="footer-text">
-          Data sourced from{' '}
-          <a
-            href="https://www.npmjs.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="footer-link"
-          >
-            npmjs.com
-          </a>{' '}
-          · Updated at build time · All packages are official Centy releases
-        </p>
-      </footer>
-    </main>
+        {/* Footer */}
+        <footer className="page-footer">
+          <p className="footer-text">
+            Data sourced from{' '}
+            <a
+              href="https://www.npmjs.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="footer-link"
+            >
+              npmjs.com
+            </a>{' '}
+            · Updated at build time · All packages are official Centy releases
+          </p>
+        </footer>
+      </main>
+    </PeriodProvider>
   )
 }

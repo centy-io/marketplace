@@ -21,6 +21,18 @@ function buildYearlyDownloads(
 
 export const handlers = [
   http.get(
+    'https://api.npmjs.org/downloads/point/last-week/:package',
+    ({ params }) => {
+      const pkg = decodeURIComponent(String(params.package))
+      return HttpResponse.json({
+        downloads: 50,
+        package: pkg,
+        start: '2026-01-20',
+        end: '2026-01-26',
+      })
+    }
+  ),
+  http.get(
     'https://api.npmjs.org/downloads/point/last-month/:package',
     ({ params }) => {
       const pkg = decodeURIComponent(String(params.package))
@@ -42,6 +54,15 @@ export const handlers = [
       },
     })
   }),
+  http.get('https://registry.npmjs.org/:package', ({ params }) => {
+    const pkg = decodeURIComponent(String(params.package))
+    return HttpResponse.json({
+      name: pkg,
+      time: {
+        modified: '2026-02-01T00:00:00.000Z',
+      },
+    })
+  }),
   http.get(
     'https://api.npmjs.org/downloads/range/last-year/:package',
     ({ params }) => {
@@ -56,13 +77,20 @@ export const handlers = [
       })
     }
   ),
-  http.get('https://registry.npmjs.org/:package', ({ params }) => {
-    const pkg = decodeURIComponent(String(params.package))
-    return HttpResponse.json({
-      name: pkg,
-      time: {
-        modified: '2026-02-01T00:00:00.000Z',
-      },
-    })
-  }),
+  http.get(
+    'https://api.npmjs.org/downloads/range/:dateRange/:package',
+    ({ params }) => {
+      const pkg = decodeURIComponent(String(params.package))
+      return HttpResponse.json({
+        downloads: [
+          { day: '2025-01-01', downloads: 200 },
+          { day: '2025-06-01', downloads: 300 },
+          { day: '2026-01-01', downloads: 150 },
+        ],
+        package: pkg,
+        start: '2000-01-01',
+        end: '2026-02-26',
+      })
+    }
+  ),
 ]
