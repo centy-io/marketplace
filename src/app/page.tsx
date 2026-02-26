@@ -12,7 +12,6 @@ interface Pkg {
   version: string
   description: string
   downloads: number | null
-  group: 'core' | 'installer' | 'platform'
 }
 
 interface NpmSearchResult {
@@ -25,100 +24,27 @@ interface NpmSearchResult {
   }>
 }
 
-const FALLBACK: Pkg[] = [
-  {
-    name: 'centy',
-    version: '0.7.8',
-    description:
-      'CLI for managing project issues and docs via code in the .centy folder',
-    downloads: 2049,
-    group: 'core',
-  },
-  {
-    name: 'centy-plugin-persona',
-    version: '0.1.4',
-    description: 'Persona CLI by Centy',
-    downloads: null,
-    group: 'core',
-  },
-  {
-    name: '@centy-io/centy-installer',
-    version: '0.1.1',
-    description: 'Multi-ecosystem installer for the centy-daemon binary',
-    downloads: 222,
-    group: 'installer',
-  },
-  {
-    name: '@centy-io/centy-installer-darwin-arm64',
-    version: '0.1.1',
-    description: 'macOS ARM64',
-    downloads: 198,
-    group: 'platform',
-  },
-  {
-    name: '@centy-io/centy-installer-darwin-x64',
-    version: '0.1.1',
-    description: 'macOS x64',
-    downloads: 201,
-    group: 'platform',
-  },
-  {
-    name: '@centy-io/centy-installer-linux-x64',
-    version: '0.1.1',
-    description: 'Linux x64',
-    downloads: 227,
-    group: 'platform',
-  },
-  {
-    name: '@centy-io/centy-installer-linux-arm64',
-    version: '0.1.1',
-    description: 'Linux ARM64',
-    downloads: 199,
-    group: 'platform',
-  },
-  {
-    name: '@centy-io/centy-installer-win32-x64',
-    version: '0.1.1',
-    description: 'Windows x64',
-    downloads: 212,
-    group: 'platform',
-  },
-]
-
 function isCentyPackage(name: string): boolean {
   const unscoped = name.includes('/') ? name.split('/')[1] : name
   return unscoped === 'centy' || unscoped.startsWith('centy-')
 }
 
-function inferGroup(name: string): Pkg['group'] {
-  const unscoped = name.includes('/') ? name.split('/')[1] : name
-  if (unscoped === 'centy-installer') return 'installer'
-  if (unscoped.startsWith('centy-installer-')) return 'platform'
-  return 'core'
-}
-
 const fetchPackages = cache(async (): Promise<Pkg[]> => {
-  try {
-    const res = await fetch(
-      'https://registry.npmjs.org/-/v1/search?text=centy&size=50',
-      { next: { revalidate: 3600 } }
-    )
-    if (!res.ok) return FALLBACK
-    const data: NpmSearchResult = await res.json()
-    const packages: Pkg[] = data.objects
-      .map(o => o.package)
-      .filter(pkg => isCentyPackage(pkg.name))
-      .map(pkg => ({
-        name: pkg.name,
-        version: pkg.version,
-        description: pkg.description,
-        downloads: null,
-        group: inferGroup(pkg.name),
-      }))
-    return packages.length > 0 ? packages : FALLBACK
-  } catch {
-    return FALLBACK
-  }
+  const res = await fetch(
+    'https://registry.npmjs.org/-/v1/search?text=centy&size=50',
+    { next: { revalidate: 3600 } }
+  )
+  if (!res.ok) return []
+  const data: NpmSearchResult = await res.json()
+  return data.objects
+    .map(o => o.package)
+    .filter(pkg => isCentyPackage(pkg.name))
+    .map(pkg => ({
+      name: pkg.name,
+      version: pkg.version,
+      description: pkg.description,
+      downloads: null,
+    }))
 })
 
 const fetchStats = cache(
@@ -137,7 +63,7 @@ const fetchStats = cache(
             map.set(pkg.name, data.downloads)
           }
         } catch {
-          // fall back to hardcoded value
+          // ignore
         }
       })
     )
@@ -195,29 +121,6 @@ async function HeaderStats() {
       >
         across {discovered.length} packages
       </div>
-    </div>
-  )
-}
-
-function SectionHeader({
-  title,
-  count,
-  delay,
-}: {
-  title: string
-  count: number
-  delay: number
-}) {
-  return (
-    <div
-      className="section-header animate-in"
-      style={{ animationDelay: `${delay}ms`, opacity: 0 }}
-    >
-      <span className="name">{title}</span>
-      <span className="line" />
-      <span style={{ whiteSpace: 'nowrap' }}>
-        {count} package{count !== 1 ? 's' : ''}
-      </span>
     </div>
   )
 }
@@ -327,100 +230,22 @@ async function PackageList() {
     }
   })
 
-  const core = packages.filter(p => p.group === 'core')
-  const installer = packages.filter(p => p.group === 'installer')
-  const platform = packages.filter(p => p.group === 'platform')
-
   return (
     <>
-      {/* CORE */}
-      <SectionHeader title="CORE" count={core.length} delay={100} />
       <div
         className="animate-in"
         style={{
           border: '1px solid var(--c-border)',
           borderRadius: '4px',
           overflow: 'hidden',
-          animationDelay: '150ms',
+          marginTop: '2rem',
+          animationDelay: '100ms',
           opacity: 0,
         }}
       >
-        {core.map((pkg, i) => (
-          <PkgRow key={pkg.name} pkg={pkg} delay={150 + i * 40} />
+        {packages.map((pkg, i) => (
+          <PkgRow key={pkg.name} pkg={pkg} delay={100 + i * 40} />
         ))}
-      </div>
-
-      {/* INSTALLER */}
-      <SectionHeader
-        title="INSTALLER"
-        count={installer.length + platform.length}
-        delay={300}
-      />
-      <div
-        className="animate-in"
-        style={{
-          border: '1px solid var(--c-border)',
-          borderRadius: '4px',
-          overflow: 'hidden',
-          animationDelay: '350ms',
-          opacity: 0,
-        }}
-      >
-        {installer.map((pkg, i) => (
-          <PkgRow key={pkg.name} pkg={pkg} delay={350 + i * 40} />
-        ))}
-
-        {/* Platform binaries sub-table */}
-        <div
-          className="animate-in"
-          style={{
-            borderTop: '1px solid var(--c-border)',
-            background: 'var(--c-bg2)',
-            animationDelay: '400ms',
-            opacity: 0,
-          }}
-        >
-          <div
-            style={{
-              padding: '0.5rem 1rem 0.35rem 2.5rem',
-              fontSize: '0.62rem',
-              color: 'var(--c-muted)',
-              letterSpacing: '0.12em',
-              borderBottom: '1px solid var(--c-border)',
-            }}
-          >
-            PLATFORM BINARIES
-          </div>
-          {platform.map(pkg => (
-            <div key={pkg.name} className="platform-row">
-              <a
-                className="pkg-link"
-                href={npmUrl(pkg.name)}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ fontSize: '0.72rem' }}
-              >
-                {pkg.name}
-              </a>
-              <span style={{ color: 'var(--c-muted)', fontSize: '0.68rem' }}>
-                {pkg.description}
-              </span>
-              <span
-                style={{
-                  color: 'var(--c-muted)',
-                  fontSize: '0.68rem',
-                  textAlign: 'right',
-                }}
-              >
-                <span style={{ marginRight: '0.25rem' }}>↓</span>
-                {fmt(pkg.downloads)}
-                {pkg.downloads !== null && (
-                  <span style={{ fontSize: '0.6rem' }}>/mo</span>
-                )}
-              </span>
-            </div>
-          ))}
-        </div>
       </div>
 
       {/* Official badge note */}
@@ -433,7 +258,7 @@ async function PackageList() {
           marginTop: '2rem',
           fontSize: '0.65rem',
           color: 'var(--c-muted)',
-          animationDelay: '650ms',
+          animationDelay: '300ms',
           opacity: 0,
         }}
       >
@@ -536,7 +361,7 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Package registry */}
+      {/* Package list */}
       <div
         style={{
           maxWidth: '900px',
@@ -544,14 +369,7 @@ export default function Home() {
           padding: '0 2rem 4rem',
         }}
       >
-        <Suspense
-          fallback={
-            <>
-              <SectionSkeleton rowCount={2} />
-              <SectionSkeleton rowCount={7} />
-            </>
-          }
-        >
+        <Suspense fallback={<SectionSkeleton rowCount={9} />}>
           <PackageList />
         </Suspense>
       </div>
