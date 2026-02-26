@@ -17,7 +17,8 @@
     "sparkline",
     "sparklines",
     "viewports",
-    "viewport"
+    "viewport",
+    "favicons"
   ],
   "ignorePaths": [".centy-manifest.json", ".claude/**", ".centy/issues/**"]
 }
