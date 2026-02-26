@@ -19,5 +19,5 @@
     "viewports",
     "viewport"
   ],
-  "ignorePaths": [".centy-manifest.json", ".claude/**"]
+  "ignorePaths": [".centy-manifest.json", ".claude/**", ".centy/issues/**"]
 }
