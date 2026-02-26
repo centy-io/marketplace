@@ -91,33 +91,11 @@ async function HeaderStats() {
 
   return (
     <div className="header-stats">
-      <div
-        style={{
-          fontSize: '0.6rem',
-          color: 'var(--c-muted)',
-          letterSpacing: '0.15em',
-          marginBottom: '0.35rem',
-        }}
-      >
-        TOTAL DOWNLOADS / MONTH
-      </div>
-      <div
-        style={{
-          fontSize: '2rem',
-          fontWeight: 600,
-          color: 'var(--c-accent)',
-          lineHeight: 1,
-        }}
-      >
+      <div className="header-stats-label">TOTAL DOWNLOADS / MONTH</div>
+      <div className="header-stats-total">
         {totalDownloads.toLocaleString('en-US')}
       </div>
-      <div
-        style={{
-          fontSize: '0.65rem',
-          color: 'var(--c-muted)',
-          marginTop: '0.4rem',
-        }}
-      >
+      <div className="header-stats-count">
         across {discovered.length} packages
       </div>
     </div>
@@ -128,80 +106,32 @@ function PkgRow({ pkg, delay }: { pkg: Pkg; delay: number }) {
   return (
     <div
       className="pkg-row animate-in"
-      style={{ animationDelay: `${delay}ms`, opacity: 0 }}
+      style={{ animationDelay: `${delay}ms` }}
     >
       {/* indicator dot */}
-      <span
-        style={{
-          display: 'inline-block',
-          width: '5px',
-          height: '5px',
-          borderRadius: '50%',
-          background: 'var(--c-accent)',
-          opacity: 0.7,
-          alignSelf: 'center',
-          flexShrink: 0,
-        }}
-      />
+      <span className="pkg-dot" />
 
       {/* name + description */}
-      <div style={{ minWidth: 0 }}>
+      <div className="pkg-name-col">
         <a
           className="pkg-link"
           href={npmUrl(pkg.name)}
           target="_blank"
           rel="noopener noreferrer"
-          style={{ fontSize: '0.85rem' }}
         >
           {pkg.name}
         </a>
-        <p
-          style={{
-            color: 'var(--c-muted)',
-            fontSize: '0.7rem',
-            marginTop: '0.2rem',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {pkg.description}
-        </p>
+        <p className="pkg-desc">{pkg.description}</p>
       </div>
 
       {/* version */}
-      <span
-        className="pkg-version"
-        style={{
-          color: 'var(--c-muted)',
-          fontSize: '0.72rem',
-          whiteSpace: 'nowrap',
-          paddingTop: '0.15rem',
-        }}
-      >
-        v{pkg.version}
-      </span>
+      <span className="pkg-version">v{pkg.version}</span>
 
       {/* downloads */}
-      <span
-        style={{
-          color: 'var(--c-text)',
-          fontSize: '0.75rem',
-          whiteSpace: 'nowrap',
-          paddingTop: '0.15rem',
-          textAlign: 'right',
-          minWidth: '6rem',
-        }}
-      >
-        <span style={{ color: 'var(--c-muted)', marginRight: '0.3rem' }}>
-          ↓
-        </span>
-        <span style={{ fontWeight: 500 }}>{fmt(pkg.downloads)}</span>
-        {pkg.downloads !== null && (
-          <span style={{ color: 'var(--c-muted)', fontSize: '0.65rem' }}>
-            /mo
-          </span>
-        )}
+      <span className="pkg-downloads">
+        <span className="pkg-dl-arrow">↓</span>
+        <span className="pkg-dl-count">{fmt(pkg.downloads)}</span>
+        {pkg.downloads !== null && <span className="pkg-dl-unit">/mo</span>}
       </span>
 
       {/* npm link */}
@@ -210,7 +140,6 @@ function PkgRow({ pkg, delay }: { pkg: Pkg; delay: number }) {
         target="_blank"
         rel="noopener noreferrer"
         className="npm-link"
-        style={{ paddingTop: '0.15rem' }}
       >
         npm ↗
       </a>
@@ -232,38 +161,16 @@ async function PackageList() {
 
   return (
     <>
-      <div
-        className="animate-in"
-        style={{
-          border: '1px solid var(--c-border)',
-          borderRadius: '4px',
-          overflow: 'hidden',
-          marginTop: '2rem',
-          animationDelay: '100ms',
-          opacity: 0,
-        }}
-      >
+      <div className="animate-in pkg-list">
         {packages.map((pkg, i) => (
           <PkgRow key={pkg.name} pkg={pkg} delay={100 + i * 40} />
         ))}
       </div>
 
       {/* Official badge note */}
-      <div
-        className="animate-in"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem',
-          marginTop: '2rem',
-          fontSize: '0.65rem',
-          color: 'var(--c-muted)',
-          animationDelay: '300ms',
-          opacity: 0,
-        }}
-      >
+      <div className="animate-in pkg-badge-note">
         <span className="badge badge-official">✓ official</span>
-        <span>
+        <span className="pkg-badge-note-text">
           All listed packages are officially maintained by the Centy team
         </span>
       </div>
@@ -275,71 +182,21 @@ async function PackageList() {
 
 export default function Home() {
   return (
-    <main
-      style={{
-        minHeight: '100vh',
-        background: 'var(--c-bg)',
-        color: 'var(--c-text)',
-        fontFamily: "'IBM Plex Mono', monospace",
-      }}
-    >
+    <main className="page-main">
       {/* Top amber line */}
-      <div
-        style={{
-          height: '2px',
-          background:
-            'linear-gradient(90deg, var(--c-accent) 0%, transparent 100%)',
-        }}
-      />
+      <div className="top-accent-line" />
 
       {/* Header */}
-      <header
-        className="animate-in header-outer"
-        style={{
-          animationDelay: '0ms',
-          opacity: 0,
-        }}
-      >
-        <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+      <header className="animate-in header-outer">
+        <div className="header-inner">
           <div className="header-flex">
             {/* Title */}
-            <div>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'baseline',
-                  gap: '0.75rem',
-                  marginBottom: '0.5rem',
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: '1.75rem',
-                    fontWeight: 600,
-                    color: 'var(--c-accent)',
-                    letterSpacing: '0.12em',
-                  }}
-                >
-                  CENTY
-                </span>
-                <span
-                  style={{
-                    fontSize: '0.8rem',
-                    color: 'var(--c-muted)',
-                    letterSpacing: '0.25em',
-                    fontWeight: 300,
-                  }}
-                >
-                  PACKAGES
-                </span>
+            <div className="header-title">
+              <div className="header-title-row">
+                <span className="header-logo">CENTY</span>
+                <span className="header-subtitle">PACKAGES</span>
               </div>
-              <p
-                style={{
-                  color: 'var(--c-muted)',
-                  fontSize: '0.75rem',
-                  letterSpacing: '0.04em',
-                }}
-              >
+              <p className="header-tagline">
                 npm packages in the Centy ecosystem
               </p>
             </div>
@@ -360,29 +217,14 @@ export default function Home() {
       </div>
 
       {/* Footer */}
-      <footer
-        style={{
-          borderTop: '1px solid var(--c-border)',
-          padding: '1.25rem 2rem',
-          textAlign: 'center',
-        }}
-      >
-        <p
-          style={{
-            color: 'var(--c-muted)',
-            fontSize: '0.65rem',
-            letterSpacing: '0.05em',
-          }}
-        >
+      <footer className="page-footer">
+        <p className="footer-text">
           Data sourced from{' '}
           <a
             href="https://www.npmjs.com"
             target="_blank"
             rel="noopener noreferrer"
-            style={{
-              color: 'var(--c-accent)',
-              textDecoration: 'none',
-            }}
+            className="footer-link"
           >
             npmjs.com
           </a>{' '}
