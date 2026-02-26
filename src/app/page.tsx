@@ -401,10 +401,7 @@ async function PackageList() {
 
   return (
     <>
-      <div
-        className="section-header animate-in"
-        style={{ animationDelay: '80ms' }}
-      >
+      <div className="section-header animate-in">
         <span className="name">PACKAGES</span>
         <span className="line" />
         <PeriodToggle />
