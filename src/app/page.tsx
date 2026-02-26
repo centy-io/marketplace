@@ -25,13 +25,12 @@ interface NpmSearchResult {
 }
 
 function isCentyPackage(name: string): boolean {
-  const unscoped = name.includes('/') ? name.split('/')[1] : name
-  return unscoped === 'centy' || unscoped.startsWith('centy-')
+  return name.startsWith('centy-')
 }
 
 const fetchPackages = cache(async (): Promise<Pkg[]> => {
   const res = await fetch(
-    'https://registry.npmjs.org/-/v1/search?text=centy&size=50',
+    'https://registry.npmjs.org/-/v1/search?text=centy-&size=50',
     { next: { revalidate: 3600 } }
   )
   if (!res.ok) return []
