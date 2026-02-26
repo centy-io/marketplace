@@ -8,7 +8,8 @@
       "Bash(uuidgen:*)",
       "Bash(gh issue:*)",
       "Bash(npm info:*)",
-      "Bash(do echo:*)"
+      "Bash(do echo:*)",
+      "Bash(pnpm prettier:*)"
     ],
     "deny": ["Bash(npm install)", "Bash(gh issue create:*)"]
   }
