@@ -12,6 +12,7 @@ interface Pkg {
   version: string
   description: string
   downloads: number | null
+  unpackedSize: number | null
 }
 
 interface NpmSearchResult {
@@ -43,6 +44,7 @@ const fetchPackages = cache(async (): Promise<Pkg[]> => {
       version: pkg.version,
       description: pkg.description,
       downloads: null,
+      unpackedSize: null,
     }))
 })
 
@@ -69,6 +71,40 @@ const fetchStats = cache(
     return map
   }
 )
+
+const fetchSizes = cache(
+  async (packages: Pkg[]): Promise<Map<string, number>> => {
+    const map = new Map<string, number>()
+    await Promise.allSettled(
+      packages.map(async pkg => {
+        try {
+          const res = await fetch(
+            `https://registry.npmjs.org/${encodeURIComponent(pkg.name)}/latest`,
+            { next: { revalidate: 3600 } }
+          )
+          if (!res.ok) return
+          const data: { dist?: { unpackedSize?: number } } = await res.json()
+          if (
+            data.dist !== undefined &&
+            typeof data.dist.unpackedSize === 'number'
+          ) {
+            map.set(pkg.name, data.dist.unpackedSize)
+          }
+        } catch {
+          // ignore
+        }
+      })
+    )
+    return map
+  }
+)
+
+function fmtBytes(n: number | null): string {
+  if (n === null) return '—'
+  if (n < 1000) return `${n} B`
+  if (n < 1_000_000) return `${(n / 1000).toFixed(1)} kB`
+  return `${(n / 1_000_000).toFixed(1)} MB`
+}
 
 function fmt(n: number | null): string {
   if (n === null) return '—'
@@ -204,6 +240,23 @@ function PkgRow({ pkg, delay }: { pkg: Pkg; delay: number }) {
         )}
       </span>
 
+      {/* unpacked size */}
+      <span
+        style={{
+          color: 'var(--c-text)',
+          fontSize: '0.75rem',
+          whiteSpace: 'nowrap',
+          paddingTop: '0.15rem',
+          textAlign: 'right',
+          minWidth: '4.5rem',
+        }}
+      >
+        <span style={{ color: 'var(--c-muted)', marginRight: '0.3rem' }}>
+          ⊞
+        </span>
+        <span style={{ fontWeight: 500 }}>{fmtBytes(pkg.unpackedSize)}</span>
+      </span>
+
       {/* npm link */}
       <a
         href={npmUrl(pkg.name)}
@@ -220,13 +273,18 @@ function PkgRow({ pkg, delay }: { pkg: Pkg; delay: number }) {
 
 async function PackageList() {
   const discovered = await fetchPackages()
-  const stats = await fetchStats(discovered)
+  const [stats, sizes] = await Promise.all([
+    fetchStats(discovered),
+    fetchSizes(discovered),
+  ])
 
   const packages: Pkg[] = discovered.map(pkg => {
     const statsDownloads = stats.get(pkg.name)
+    const sizeValue = sizes.get(pkg.name)
     return {
       ...pkg,
       downloads: statsDownloads !== undefined ? statsDownloads : pkg.downloads,
+      unpackedSize: sizeValue !== undefined ? sizeValue : null,
     }
   })
 

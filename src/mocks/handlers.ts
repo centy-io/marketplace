@@ -13,4 +13,14 @@ export const handlers = [
       })
     }
   ),
+  http.get('https://registry.npmjs.org/:package/latest', ({ params }) => {
+    const pkg = decodeURIComponent(String(params.package))
+    return HttpResponse.json({
+      name: pkg,
+      version: '1.0.0',
+      dist: {
+        unpackedSize: 12345,
+      },
+    })
+  }),
 ]
