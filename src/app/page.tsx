@@ -1,4 +1,6 @@
+import { Suspense, cache } from 'react'
 import type { Metadata } from 'next'
+import { HeaderStatsSkeleton, SectionSkeleton } from './skeletons'
 
 export const metadata: Metadata = {
   title: 'Centy · npm Packages',
@@ -95,7 +97,7 @@ function inferGroup(name: string): Pkg['group'] {
   return 'core'
 }
 
-async function fetchPackages(): Promise<Pkg[]> {
+const fetchPackages = cache(async (): Promise<Pkg[]> => {
   try {
     const res = await fetch(
       'https://registry.npmjs.org/-/v1/search?text=centy&size=50',
@@ -117,29 +119,31 @@ async function fetchPackages(): Promise<Pkg[]> {
   } catch {
     return FALLBACK
   }
-}
+})
 
-async function fetchStats(packages: Pkg[]): Promise<Map<string, number>> {
-  const map = new Map<string, number>()
-  await Promise.allSettled(
-    packages.map(async pkg => {
-      try {
-        const res = await fetch(
-          `https://api.npmjs.org/downloads/point/last-month/${encodeURIComponent(pkg.name)}`,
-          { cache: 'force-cache' }
-        )
-        if (!res.ok) return
-        const data: { downloads?: number } = await res.json()
-        if (typeof data.downloads === 'number') {
-          map.set(pkg.name, data.downloads)
+const fetchStats = cache(
+  async (packages: Pkg[]): Promise<Map<string, number>> => {
+    const map = new Map<string, number>()
+    await Promise.allSettled(
+      packages.map(async pkg => {
+        try {
+          const res = await fetch(
+            `https://api.npmjs.org/downloads/point/last-month/${encodeURIComponent(pkg.name)}`,
+            { cache: 'force-cache' }
+          )
+          if (!res.ok) return
+          const data: { downloads?: number } = await res.json()
+          if (typeof data.downloads === 'number') {
+            map.set(pkg.name, data.downloads)
+          }
+        } catch {
+          // fall back to hardcoded value
         }
-      } catch {
-        // fall back to hardcoded value
-      }
-    })
-  )
-  return map
-}
+      })
+    )
+    return map
+  }
+)
 
 function fmt(n: number | null): string {
   if (n === null) return '—'
@@ -148,6 +152,51 @@ function fmt(n: number | null): string {
 
 function npmUrl(name: string): string {
   return `https://www.npmjs.com/package/${encodeURIComponent(name)}`
+}
+
+// ── Async data components ────────────────────────────────────────────────────
+
+async function HeaderStats() {
+  const discovered = await fetchPackages()
+  const stats = await fetchStats(discovered)
+  const totalDownloads = discovered.reduce((s, p) => {
+    const d = stats.get(p.name)
+    return s + (d !== undefined ? d : p.downloads !== null ? p.downloads : 0)
+  }, 0)
+
+  return (
+    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+      <div
+        style={{
+          fontSize: '0.6rem',
+          color: 'var(--c-muted)',
+          letterSpacing: '0.15em',
+          marginBottom: '0.35rem',
+        }}
+      >
+        TOTAL DOWNLOADS / MONTH
+      </div>
+      <div
+        style={{
+          fontSize: '2rem',
+          fontWeight: 600,
+          color: 'var(--c-accent)',
+          lineHeight: 1,
+        }}
+      >
+        {totalDownloads.toLocaleString('en-US')}
+      </div>
+      <div
+        style={{
+          fontSize: '0.65rem',
+          color: 'var(--c-muted)',
+          marginTop: '0.4rem',
+        }}
+      >
+        across {discovered.length} packages
+      </div>
+    </div>
+  )
 }
 
 function SectionHeader({
@@ -266,7 +315,7 @@ function PkgRow({ pkg, delay }: { pkg: Pkg; delay: number }) {
   )
 }
 
-export default async function Home() {
+async function PackageList() {
   const discovered = await fetchPackages()
   const stats = await fetchStats(discovered)
 
@@ -282,11 +331,124 @@ export default async function Home() {
   const installer = packages.filter(p => p.group === 'installer')
   const platform = packages.filter(p => p.group === 'platform')
 
-  const totalDownloads = packages.reduce(
-    (s, p) => s + (p.downloads !== null ? p.downloads : 0),
-    0
-  )
+  return (
+    <>
+      {/* CORE */}
+      <SectionHeader title="CORE" count={core.length} delay={100} />
+      <div
+        className="animate-in"
+        style={{
+          border: '1px solid var(--c-border)',
+          borderRadius: '4px',
+          overflow: 'hidden',
+          animationDelay: '150ms',
+          opacity: 0,
+        }}
+      >
+        {core.map((pkg, i) => (
+          <PkgRow key={pkg.name} pkg={pkg} delay={150 + i * 40} />
+        ))}
+      </div>
 
+      {/* INSTALLER */}
+      <SectionHeader
+        title="INSTALLER"
+        count={installer.length + platform.length}
+        delay={300}
+      />
+      <div
+        className="animate-in"
+        style={{
+          border: '1px solid var(--c-border)',
+          borderRadius: '4px',
+          overflow: 'hidden',
+          animationDelay: '350ms',
+          opacity: 0,
+        }}
+      >
+        {installer.map((pkg, i) => (
+          <PkgRow key={pkg.name} pkg={pkg} delay={350 + i * 40} />
+        ))}
+
+        {/* Platform binaries sub-table */}
+        <div
+          className="animate-in"
+          style={{
+            borderTop: '1px solid var(--c-border)',
+            background: 'var(--c-bg2)',
+            animationDelay: '400ms',
+            opacity: 0,
+          }}
+        >
+          <div
+            style={{
+              padding: '0.5rem 1rem 0.35rem 2.5rem',
+              fontSize: '0.62rem',
+              color: 'var(--c-muted)',
+              letterSpacing: '0.12em',
+              borderBottom: '1px solid var(--c-border)',
+            }}
+          >
+            PLATFORM BINARIES
+          </div>
+          {platform.map(pkg => (
+            <div key={pkg.name} className="platform-row">
+              <a
+                className="pkg-link"
+                href={npmUrl(pkg.name)}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ fontSize: '0.72rem' }}
+              >
+                {pkg.name}
+              </a>
+              <span style={{ color: 'var(--c-muted)', fontSize: '0.68rem' }}>
+                {pkg.description}
+              </span>
+              <span
+                style={{
+                  color: 'var(--c-muted)',
+                  fontSize: '0.68rem',
+                  textAlign: 'right',
+                }}
+              >
+                <span style={{ marginRight: '0.25rem' }}>↓</span>
+                {fmt(pkg.downloads)}
+                {pkg.downloads !== null && (
+                  <span style={{ fontSize: '0.6rem' }}>/mo</span>
+                )}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Official badge note */}
+      <div
+        className="animate-in"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          marginTop: '2rem',
+          fontSize: '0.65rem',
+          color: 'var(--c-muted)',
+          animationDelay: '650ms',
+          opacity: 0,
+        }}
+      >
+        <span className="badge badge-official">✓ official</span>
+        <span>
+          All listed packages are officially maintained by the Centy team
+        </span>
+      </div>
+    </>
+  )
+}
+
+// ── Page shell ───────────────────────────────────────────────────────────────
+
+export default function Home() {
   return (
     <main
       style={{
@@ -366,38 +528,10 @@ export default async function Home() {
               </p>
             </div>
 
-            {/* Stats */}
-            <div style={{ textAlign: 'right', flexShrink: 0 }}>
-              <div
-                style={{
-                  fontSize: '0.6rem',
-                  color: 'var(--c-muted)',
-                  letterSpacing: '0.15em',
-                  marginBottom: '0.35rem',
-                }}
-              >
-                TOTAL DOWNLOADS / MONTH
-              </div>
-              <div
-                style={{
-                  fontSize: '2rem',
-                  fontWeight: 600,
-                  color: 'var(--c-accent)',
-                  lineHeight: 1,
-                }}
-              >
-                {totalDownloads.toLocaleString('en-US')}
-              </div>
-              <div
-                style={{
-                  fontSize: '0.65rem',
-                  color: 'var(--c-muted)',
-                  marginTop: '0.4rem',
-                }}
-              >
-                across {packages.length} packages
-              </div>
-            </div>
+            {/* Stats — streams in independently */}
+            <Suspense fallback={<HeaderStatsSkeleton />}>
+              <HeaderStats />
+            </Suspense>
           </div>
         </div>
       </header>
@@ -410,115 +544,16 @@ export default async function Home() {
           padding: '0 2rem 4rem',
         }}
       >
-        {/* CORE */}
-        <SectionHeader title="CORE" count={core.length} delay={100} />
-        <div
-          className="animate-in"
-          style={{
-            border: '1px solid var(--c-border)',
-            borderRadius: '4px',
-            overflow: 'hidden',
-            animationDelay: '150ms',
-            opacity: 0,
-          }}
+        <Suspense
+          fallback={
+            <>
+              <SectionSkeleton rowCount={2} />
+              <SectionSkeleton rowCount={7} />
+            </>
+          }
         >
-          {core.map((pkg, i) => (
-            <PkgRow key={pkg.name} pkg={pkg} delay={150 + i * 40} />
-          ))}
-        </div>
-
-        {/* INSTALLER */}
-        <SectionHeader
-          title="INSTALLER"
-          count={installer.length + platform.length}
-          delay={300}
-        />
-        <div
-          className="animate-in"
-          style={{
-            border: '1px solid var(--c-border)',
-            borderRadius: '4px',
-            overflow: 'hidden',
-            animationDelay: '350ms',
-            opacity: 0,
-          }}
-        >
-          {installer.map((pkg, i) => (
-            <PkgRow key={pkg.name} pkg={pkg} delay={350 + i * 40} />
-          ))}
-
-          {/* Platform binaries sub-table */}
-          <div
-            className="animate-in"
-            style={{
-              borderTop: '1px solid var(--c-border)',
-              background: 'var(--c-bg2)',
-              animationDelay: '400ms',
-              opacity: 0,
-            }}
-          >
-            <div
-              style={{
-                padding: '0.5rem 1rem 0.35rem 2.5rem',
-                fontSize: '0.62rem',
-                color: 'var(--c-muted)',
-                letterSpacing: '0.12em',
-                borderBottom: '1px solid var(--c-border)',
-              }}
-            >
-              PLATFORM BINARIES
-            </div>
-            {platform.map(pkg => (
-              <div key={pkg.name} className="platform-row">
-                <a
-                  className="pkg-link"
-                  href={npmUrl(pkg.name)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ fontSize: '0.72rem' }}
-                >
-                  {pkg.name}
-                </a>
-                <span style={{ color: 'var(--c-muted)', fontSize: '0.68rem' }}>
-                  {pkg.description}
-                </span>
-                <span
-                  style={{
-                    color: 'var(--c-muted)',
-                    fontSize: '0.68rem',
-                    textAlign: 'right',
-                  }}
-                >
-                  <span style={{ marginRight: '0.25rem' }}>↓</span>
-                  {fmt(pkg.downloads)}
-                  {pkg.downloads !== null && (
-                    <span style={{ fontSize: '0.6rem' }}>/mo</span>
-                  )}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Official badge note */}
-        <div
-          className="animate-in"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            marginTop: '2rem',
-            fontSize: '0.65rem',
-            color: 'var(--c-muted)',
-            animationDelay: '650ms',
-            opacity: 0,
-          }}
-        >
-          <span className="badge badge-official">✓ official</span>
-          <span>
-            All listed packages are officially maintained by the Centy team
-          </span>
-        </div>
+          <PackageList />
+        </Suspense>
       </div>
 
       {/* Footer */}
