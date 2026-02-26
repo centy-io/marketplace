@@ -187,3 +187,61 @@ body {
 .npm-link:hover {
   color: var(--c-accent);
 }
+
+/* --- Responsive layout --- */
+
+.header-outer {
+  border-bottom: 1px solid var(--c-border);
+  padding: 2.5rem 2rem 2rem;
+}
+
+.header-flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 2rem;
+}
+
+.header-stats {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.main-content {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 2rem 4rem;
+}
+
+@media (max-width: 640px) {
+  .header-outer {
+    padding: 1.5rem 1rem 1.25rem;
+  }
+
+  .header-flex {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .header-stats {
+    text-align: left;
+    flex-shrink: unset;
+  }
+
+  .main-content {
+    padding: 0 1rem 3rem;
+  }
+
+  .pkg-row {
+    grid-template-columns: 8px 1fr auto;
+    gap: 0 0.75rem;
+  }
+
+  .pkg-version {
+    display: none;
+  }
+
+  .pkg-row .npm-link {
+    display: none;
+  }
+}

@@ -91,7 +91,7 @@ async function HeaderStats() {
   }, 0)
 
   return (
-    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+    <div className="header-stats">
       <div
         style={{
           fontSize: '0.6rem',
@@ -172,6 +172,7 @@ function PkgRow({ pkg, delay }: { pkg: Pkg; delay: number }) {
 
       {/* version */}
       <span
+        className="pkg-version"
         style={{
           color: 'var(--c-muted)',
           fontSize: '0.72rem',
@@ -294,23 +295,14 @@ export default function Home() {
 
       {/* Header */}
       <header
-        className="animate-in"
+        className="animate-in header-outer"
         style={{
-          borderBottom: '1px solid var(--c-border)',
-          padding: '2.5rem 2rem 2rem',
           animationDelay: '0ms',
           opacity: 0,
         }}
       >
         <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'flex-start',
-              gap: '2rem',
-            }}
-          >
+          <div className="header-flex">
             {/* Title */}
             <div>
               <div
@@ -362,13 +354,7 @@ export default function Home() {
       </header>
 
       {/* Package list */}
-      <div
-        style={{
-          maxWidth: '900px',
-          margin: '0 auto',
-          padding: '0 2rem 4rem',
-        }}
-      >
+      <div className="main-content">
         <Suspense fallback={<SectionSkeleton rowCount={9} />}>
           <PackageList />
         </Suspense>
