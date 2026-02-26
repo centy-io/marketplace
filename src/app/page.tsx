@@ -15,6 +15,7 @@ interface Pkg {
   description: string
   downloads: number | null
   unpackedSize: number | null
+  publishedAt: string | null
 }
 
 interface NpmSearchResult {
@@ -51,6 +52,7 @@ const fetchPackages = cache(async (): Promise<Pkg[]> => {
       description: pkg.description,
       downloads: null,
       unpackedSize: null,
+      publishedAt: null,
     }))
 })
 
@@ -137,6 +139,56 @@ const fetchSparklines = cache(
     return map
   }
 )
+
+interface NpmRegistryTime {
+  modified?: string
+}
+
+interface NpmRegistryResponse {
+  time?: NpmRegistryTime
+}
+
+const fetchPublishDates = cache(
+  async (packages: Pkg[]): Promise<Map<string, string>> => {
+    const map = new Map<string, string>()
+    await Promise.allSettled(
+      packages.map(async pkg => {
+        try {
+          const res = await fetch(
+            `https://registry.npmjs.org/${encodeURIComponent(pkg.name)}`,
+            { cache: 'force-cache' }
+          )
+          if (!res.ok) return
+          const data: NpmRegistryResponse = await res.json()
+          const time = data.time
+          if (time === null || time === undefined) return
+          const modified = time.modified
+          if (typeof modified === 'string') {
+            map.set(pkg.name, modified)
+          }
+        } catch {
+          // ignore
+        }
+      })
+    )
+    return map
+  }
+)
+
+function fmtRelativeDate(iso: string | null): string {
+  if (iso === null) return '—'
+  const date = new Date(iso)
+  if (isNaN(date.getTime())) return '—'
+  const diffMs = date.getTime() - Date.now()
+  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24))
+  const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' })
+  if (Math.abs(diffDays) < 1) return 'today'
+  if (Math.abs(diffDays) < 30) return rtf.format(diffDays, 'day')
+  const diffMonths = Math.round(diffDays / 30.44)
+  if (Math.abs(diffMonths) < 12) return rtf.format(diffMonths, 'month')
+  const diffYears = Math.round(diffDays / 365.25)
+  return rtf.format(diffYears, 'year')
+}
 
 function fmtBytes(n: number | null): string {
   if (n === null) return '—'
@@ -248,6 +300,9 @@ function PkgRow({
       {/* version */}
       <span className="pkg-version">v{pkg.version}</span>
 
+      {/* publish date */}
+      <span className="pkg-date">{fmtRelativeDate(pkg.publishedAt)}</span>
+
       {/* sparkline */}
       {sparkline !== undefined && sparkline.length >= 2 ? (
         <Sparkline data={sparkline} />
@@ -286,19 +341,22 @@ function PkgRow({
 
 async function PackageList() {
   const discovered = await fetchPackages()
-  const [stats, sizes, sparklines] = await Promise.all([
+  const [stats, sizes, sparklines, dates] = await Promise.all([
     fetchStats(discovered),
     fetchSizes(discovered),
     fetchSparklines(discovered),
+    fetchPublishDates(discovered),
   ])
 
   const packages: Pkg[] = discovered.map(pkg => {
     const statsDownloads = stats.get(pkg.name)
     const sizeValue = sizes.get(pkg.name)
+    const dateStr = dates.get(pkg.name)
     return {
       ...pkg,
       downloads: statsDownloads !== undefined ? statsDownloads : pkg.downloads,
       unpackedSize: sizeValue !== undefined ? sizeValue : null,
+      publishedAt: dateStr !== undefined ? dateStr : null,
     }
   })
 

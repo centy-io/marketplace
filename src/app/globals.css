@@ -93,7 +93,7 @@ body {
 
 .pkg-row {
   display: grid;
-  grid-template-columns: 8px 1fr auto auto auto auto auto;
+  grid-template-columns: 8px 1fr auto auto auto auto auto auto;
   gap: 0 1.5rem;
   align-items: baseline;
   padding: 0.85rem 1rem;
@@ -336,6 +336,10 @@ body {
     display: none;
   }
 
+  .pkg-date {
+    display: none;
+  }
+
   .pkg-size {
     display: none;
   }
@@ -389,6 +393,13 @@ body {
 }
 
 .pkg-version {
+  color: var(--c-muted);
+  font-size: 0.72rem;
+  white-space: nowrap;
+  padding-top: 0.15rem;
+}
+
+.pkg-date {
   color: var(--c-muted);
   font-size: 0.72rem;
   white-space: nowrap;
@@ -516,6 +527,10 @@ body {
 .skeleton-ver-md {
   height: 0.7rem;
   width: 3.5rem;
+}
+.skeleton-date {
+  height: 0.7rem;
+  width: 4.5rem;
 }
 .skeleton-ver-lg {
   height: 0.7rem;
