@@ -48,6 +48,9 @@ export default [
     files: ['src/app/robots.ts', 'src/app/sitemap.ts'],
     rules: {
       'ddd/require-spec-file': 'off',
+      // Next.js output:export requires `export const dynamic = 'force-static'` alongside the
+      // default export function; the single-export rule cannot apply here.
+      'single-export/single-export': 'off',
     },
   },
   {
