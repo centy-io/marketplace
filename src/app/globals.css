@@ -83,9 +83,17 @@ body {
   animation: fadeSlideIn 0.4s ease both;
 }
 
+.pkg-sparkline {
+  display: block;
+  width: 56px;
+  height: 20px;
+  align-self: center;
+  flex-shrink: 0;
+}
+
 .pkg-row {
   display: grid;
-  grid-template-columns: 8px 1fr auto auto auto auto;
+  grid-template-columns: 8px 1fr auto auto auto auto auto;
   gap: 0 1.5rem;
   align-items: baseline;
   padding: 0.85rem 1rem;
@@ -319,7 +327,16 @@ body {
     gap: 0 0.75rem;
   }
 
+  .pkg-sparkline {
+    width: 48px;
+    height: 16px;
+  }
+
   .pkg-version {
+    display: none;
+  }
+
+  .pkg-size {
     display: none;
   }
 
