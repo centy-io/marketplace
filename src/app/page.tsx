@@ -512,5 +512,5 @@ export default async function Home() {
         </p>
       </footer>
     </main>
-  );
+  )
 }
