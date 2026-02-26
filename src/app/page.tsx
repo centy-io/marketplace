@@ -102,7 +102,7 @@ async function fetchPackages(): Promise<Pkg[]> {
       { next: { revalidate: 3600 } }
     )
     if (!res.ok) return FALLBACK
-    const data = (await res.json()) as NpmSearchResult
+    const data: NpmSearchResult = await res.json()
     const packages: Pkg[] = data.objects
       .map(o => o.package)
       .filter(pkg => isCentyPackage(pkg.name))
