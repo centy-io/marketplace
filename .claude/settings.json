@@ -1,0 +1,6 @@
+{
+  "permissions": {
+    "allow": ["Bash(gh repo:*)", "Bash(npx centy:*)", "Bash(centy:*)"],
+    "deny": ["Bash(npm install)", "Bash(gh issue create:*)"]
+  }
+}
