@@ -10,7 +10,7 @@ interface Pkg {
   version: string
   description: string
   downloads: number | null
-  group: 'core' | 'installer' | 'platform' | 'assets'
+  group: 'core' | 'installer' | 'platform'
 }
 
 const FALLBACK: Pkg[] = [
@@ -70,13 +70,6 @@ const FALLBACK: Pkg[] = [
     description: 'Windows x64',
     downloads: 212,
     group: 'platform',
-  },
-  {
-    name: '@centy-io/assets',
-    version: '0.0.1',
-    description: 'Centy brand assets — logos, icons, and design resources',
-    downloads: 558,
-    group: 'assets',
   },
 ]
 
@@ -238,7 +231,6 @@ export default async function Home() {
   const core = packages.filter(p => p.group === 'core')
   const installer = packages.filter(p => p.group === 'installer')
   const platform = packages.filter(p => p.group === 'platform')
-  const assets = packages.filter(p => p.group === 'assets')
 
   const totalDownloads = packages.reduce((s, p) => s + (p.downloads ?? 0), 0)
 
@@ -453,23 +445,6 @@ export default async function Home() {
               </div>
             ))}
           </div>
-        </div>
-
-        {/* ASSETS */}
-        <SectionHeader title="ASSETS" count={assets.length} delay={520} />
-        <div
-          className="animate-in"
-          style={{
-            border: '1px solid var(--c-border)',
-            borderRadius: '4px',
-            overflow: 'hidden',
-            animationDelay: '570ms',
-            opacity: 0,
-          }}
-        >
-          {assets.map((pkg, i) => (
-            <PkgRow key={pkg.name} pkg={pkg} delay={570 + i * 40} />
-          ))}
         </div>
 
         {/* Official badge note */}
