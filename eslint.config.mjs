@@ -33,27 +33,17 @@ export default [
     },
   },
   {
-    // Next.js config and instrumentation files are framework entry points without spec coverage.
-    files: ['next.config.ts', 'src/instrumentation.ts'],
-    rules: {
-      'ddd/require-spec-file': 'off',
-    },
-  },
-  {
     // Next.js special route convention files: robots.ts and sitemap.ts are framework-generated
-    // endpoints, not application logic that requires spec coverage.
-    // `export const dynamic` is a Next.js-required named export alongside the default export.
+    // endpoints that require a named `dynamic` export alongside the default export.
     files: ['src/app/robots.ts', 'src/app/sitemap.ts'],
     rules: {
-      'ddd/require-spec-file': 'off',
       'single-export/single-export': 'off',
     },
   },
   {
-    // MSW mock files: spec files and url-hardcoding rules don't apply to test infrastructure.
+    // MSW mock files: url-hardcoding rules don't apply to test infrastructure.
     files: ['src/mocks/**'],
     rules: {
-      'ddd/require-spec-file': 'off',
       'default/no-hardcoded-urls': 'off',
     },
   },
