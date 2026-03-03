@@ -30,8 +30,6 @@ export default [
     rules: {
       // npm registry URLs are intentional constants, not secrets or configurable endpoints.
       'default/no-hardcoded-urls': 'off',
-      // Next.js pages are legitimately larger than generic 100/70-line limits.
-      'max-lines': ['warn', { max: 600, skipBlankLines: true, skipComments: true }],
     },
   },
   {
