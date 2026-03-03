@@ -33,11 +33,10 @@ export default [
     },
   },
   {
-    // Next.js config and instrumentation files: process.env access is framework-required here.
+    // Next.js config and instrumentation files are framework entry points without spec coverage.
     files: ['next.config.ts', 'src/instrumentation.ts'],
     rules: {
       'ddd/require-spec-file': 'off',
-      'no-restricted-syntax': 'off',
     },
   },
   {
