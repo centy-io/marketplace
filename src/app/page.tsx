@@ -11,6 +11,16 @@ export const metadata: Metadata = {
   description: 'All npm packages in the Centy ecosystem',
 }
 
+const buildTimestamp = new Date().toLocaleDateString('en-US', {
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  timeZone: 'UTC',
+  timeZoneName: 'short',
+})
+
 export default function Home() {
   return (
     <PeriodProvider>
@@ -61,7 +71,8 @@ export default function Home() {
             >
               npmjs.com
             </a>{' '}
-            · Updated at build time · All packages are official Centy releases
+            · Last updated: {buildTimestamp} · All packages are official Centy
+            releases
           </p>
         </footer>
       </main>
