@@ -1,8 +1,6 @@
 export async function register() {
-  if (
-    process.env.NEXT_RUNTIME !== 'nodejs' ||
-    process.env.API_MOCKING !== 'enabled'
-  ) {
+  const { NEXT_RUNTIME, API_MOCKING } = process.env
+  if (NEXT_RUNTIME !== 'nodejs' || API_MOCKING !== 'enabled') {
     return
   }
   const { server } = await import('./mocks/node')

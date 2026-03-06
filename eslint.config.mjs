@@ -30,16 +30,6 @@ export default [
     rules: {
       // npm registry URLs are intentional constants, not secrets or configurable endpoints.
       'default/no-hardcoded-urls': 'off',
-      // Next.js pages are legitimately larger than generic 100/70-line limits.
-      'max-lines': ['warn', { max: 600, skipBlankLines: true, skipComments: true }],
-    },
-  },
-  {
-    // Next.js config and instrumentation files: process.env access is framework-required here.
-    files: ['next.config.ts', 'src/instrumentation.ts'],
-    rules: {
-      'ddd/require-spec-file': 'off',
-      'no-restricted-syntax': 'off',
     },
   },
   {
@@ -53,10 +43,9 @@ export default [
     },
   },
   {
-    // MSW mock files: spec files and url-hardcoding rules don't apply to test infrastructure.
+    // MSW mock files: url-hardcoding rules don't apply to test infrastructure.
     files: ['src/mocks/**'],
     rules: {
-      'ddd/require-spec-file': 'off',
       'default/no-hardcoded-urls': 'off',
     },
   },

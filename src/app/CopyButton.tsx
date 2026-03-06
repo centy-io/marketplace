@@ -1,30 +1,12 @@
 'use client'
 
 import { useState, useCallback, useSyncExternalStore } from 'react'
-
-const PM_KEY = 'pkg-manager'
-
-function getCommand(pkgName: string, pm: string): string {
-  return pm === 'pnpm' ? `pnpm add ${pkgName}` : `npm install ${pkgName}`
-}
-
-function subscribe(callback: () => void): () => void {
-  window.addEventListener('pkg-manager-change', callback)
-  return () => window.removeEventListener('pkg-manager-change', callback)
-}
-
-function getSnapshot(): string {
-  try {
-    const stored = localStorage.getItem(PM_KEY)
-    return stored !== null ? stored : 'npm'
-  } catch {
-    return 'npm'
-  }
-}
-
-function getServerSnapshot(): string {
-  return 'npm'
-}
+import {
+  getCommand,
+  subscribe,
+  getSnapshot,
+  getServerSnapshot,
+} from './copy-utils'
 
 export default function CopyButton({ pkgName }: { pkgName: string }) {
   const [copied, setCopied] = useState(false)
